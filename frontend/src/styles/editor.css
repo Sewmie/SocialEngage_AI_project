@@ -1,0 +1,13 @@
+.page { padding: 24px; max-width: 720px; margin: 0 auto; font-family: system-ui, sans-serif; }
+.editor__header { display: flex; align-items: center; gap: 12px; }
+.editor__preview {
+  width: 100%; max-width: 420px; margin: 16px auto;
+  background: #111; border-radius: 12px; overflow: hidden;
+}
+.editor__preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { padding: 8px 12px; border-radius: 999px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
+.chip--active { border-color: #833AB4; background: #f3e8ff; }
+.editor__actions { display: flex; gap: 12px; margin-top: 24px; }
+button.primary { background: linear-gradient(90deg, #833AB4, #E1306C); color: #fff; border: none; padding: 10px 16px; border-radius: 8px; }
+label { display: block; margin: 8px 0; }
