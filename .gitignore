@@ -33,15 +33,11 @@ models/
 logs/
 *.log
 
-# Node / Expo
+# Node / Vite / React
 node_modules/
-.expo/
 dist/
-web-build/
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-*.orig.*
-npm-debug.*
+.vite/
+*.local
+
+.env
+.env.local
