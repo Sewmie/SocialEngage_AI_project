@@ -16,6 +16,7 @@ data/
 datasets/
 models/*
 !models/engagement.joblib
+!models/engagement.metrics.json
 *.pkl
 *.h5
 *.pt

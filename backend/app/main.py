@@ -35,4 +35,4 @@ def _startup():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "multimodal-content-api", "phase": 4}
+    return {"status": "ok", "service": "multimodal-content-api", "phase": 5}

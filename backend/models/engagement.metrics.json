@@ -1,0 +1,8 @@
+{
+  "mae": 6.019,
+  "rmse": 8.169,
+  "r2": 0.681,
+  "n_train": 95,
+  "n_test": 24,
+  "clip_features": true
+}

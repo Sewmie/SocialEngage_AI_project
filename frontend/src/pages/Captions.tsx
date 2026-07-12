@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { loadEditorHandoff, clearEditorHandoff } from '../lib/editorSession';
 import { generateSocialContent } from '../lib/generateContent';
 import { formatGeminiError } from '../lib/geminiModels';
 import { captionMoodById } from '../lib/captionMoods';
 import { brandById } from '../lib/brandProfiles';
 import type { EngagementComparison, RankedCaption, VisualAnalysis } from '../lib/types';
+import { AppNav } from '../components/AppNav';
 
 export default function Captions() {
   const navigate = useNavigate();
@@ -72,10 +73,15 @@ export default function Captions() {
 
   if (!handoff && !loading) {
     return (
-      <main className="page">
-        <p>{error}</p>
-        <button type="button" onClick={() => navigate('/')}>Home</button>
-      </main>
+      <>
+        <AppNav />
+        <main className="page">
+          <div className="empty-state">
+            <p>{error}</p>
+            <button type="button" className="primary" onClick={() => navigate('/')}>Home</button>
+          </div>
+        </main>
+      </>
     );
   }
 
@@ -84,114 +90,150 @@ export default function Captions() {
   const scoreLabel = source === 'api' ? 'ML engagement score' : 'Engagement score (heuristic)';
 
   return (
-    <main className="page">
-      <header className="editor__header">
-        <button type="button" onClick={() => navigate('/editor')}>← Back</button>
-        <h2>Generated content</h2>
-      </header>
+    <>
+      <AppNav />
+      <main className="page">
+        <header className="page-header">
+          <button type="button" className="ghost" onClick={() => navigate('/editor')}>← Back</button>
+          <h2>Generated content</h2>
+        </header>
 
-      {handoff && (
-        <img src={handoff.imageBlobUrl} alt="Post" style={{ maxWidth: 200, borderRadius: 8 }} />
-      )}
-
-      <p className="muted">
-        {mood.label} · {brand.label} · {handoff?.contentPath === 'marketing' ? 'Marketing' : 'Casual'}
-        {source && (
-          <> · <span className={`source-badge source-badge--${source}`}>
-            {source === 'api' ? 'Multimodal API (CLIP + Gemini + ML)' : 'Client fallback (Gemini)'}
-          </span></>
+        {handoff && (
+          <img src={handoff.imageBlobUrl} alt="Post" className="captions-thumb" />
         )}
-      </p>
 
-      {loading && (
-        <p>
-          Running multimodal pipeline… CLIP analysis + Gemini captions + ML ranking (30–90s on first run)
-        </p>
-      )}
-      {error && <p className="error">{error}</p>}
-
-      {!loading && visual && (
-        <section className="visual-card">
-          <h3>CLIP visual analysis</h3>
-          <p><strong>Scenes:</strong> {visual.scene_labels.join(', ') || '—'}</p>
-          <p><strong>Mood:</strong> {visual.dominant_mood}</p>
-          <p><strong>Objects:</strong> {visual.objects_detected.join(', ') || '—'}</p>
-          <p><strong>Aesthetic score:</strong> {Math.round(visual.aesthetic_score * 100)}%</p>
-        </section>
-      )}
-
-      {!loading && !error && score !== null && (
-        <div className="score-box">
-          <strong>{scoreLabel}:</strong> {Math.round(score)}/100
+        <div className="captions-meta muted">
+          <span>{mood.label} · {brand.label} · {handoff?.contentPath === 'marketing' ? 'Marketing' : 'Casual'}</span>
+          {source && (
+            <span className={`source-badge source-badge--${source}`}>
+              {source === 'api' ? 'CLIP + Gemini + ML' : 'Client fallback'}
+            </span>
+          )}
         </div>
-      )}
 
-      {!loading && comparison && (
-        <section className="comparison-card">
-          <h3>Caption optimization</h3>
-          <p className="muted">{comparison.baseline_label} ({comparison.baseline_score}/100)</p>
-          <p className="comparison-caption">{comparison.baseline_caption}</p>
-          <p className="muted">{comparison.optimized_label} ({comparison.optimized_score}/100)</p>
-          <p className="comparison-caption comparison-caption--best">{comparison.optimized_caption}</p>
-          <p><strong>Score delta:</strong> +{comparison.score_delta}</p>
-        </section>
-      )}
+        {loading && (
+          <div className="loading-block">
+            <div className="spinner" aria-hidden />
+            <p>Running multimodal pipeline…</p>
+            <p className="loading-block__hint">
+              CLIP analysis + Gemini captions + ML ranking (30–90s on first run)
+            </p>
+          </div>
+        )}
 
-      {!loading && ranked.length > 0 && (
-        <section>
-          <h3>Ranked captions</h3>
-          {ranked.map((item) => (
-            <div key={item.rank} className={`caption-card ${item.recommended ? 'caption-card--best' : ''}`}>
-              <div className="caption-card__meta">
-                #{item.rank} · {Math.round(item.engagement_score)}/100 · {item.popularity_level}
-                {item.recommended && ' · Recommended'}
+        {error && <p className="error">{error}</p>}
+
+        {!loading && visual && (
+          <section className="visual-card">
+            <h3>CLIP visual analysis</h3>
+            <div className="visual-grid">
+              <div className="visual-item">
+                <strong>Scenes</strong>
+                {visual.scene_labels.join(', ') || '—'}
               </div>
-              <p>{item.caption}</p>
-              <button type="button" onClick={() => copy(item.caption)}>Copy</button>
+              <div className="visual-item">
+                <strong>Mood</strong>
+                {visual.dominant_mood}
+              </div>
+              <div className="visual-item">
+                <strong>Objects</strong>
+                {visual.objects_detected.join(', ') || '—'}
+              </div>
+              <div className="visual-item">
+                <strong>Aesthetic</strong>
+                {Math.round(visual.aesthetic_score * 100)}%
+              </div>
             </div>
-          ))}
-        </section>
-      )}
+          </section>
+        )}
 
-      {!loading && hashtags.length > 0 && (
-        <section>
-          <h3>Hashtags</h3>
-          <p>{hashtags.join(' ')}</p>
-          <button type="button" onClick={() => copy(hashtags.join(' '))}>Copy all</button>
-        </section>
-      )}
+        {!loading && !error && score !== null && (
+          <div className="score-box">
+            <div className="score-box__ring">
+              <span className="score-box__value">{Math.round(score)}</span>
+            </div>
+            <div className="score-box__label">
+              <strong>{scoreLabel}</strong>
+              out of 100 — predicted engagement potential
+            </div>
+          </div>
+        )}
 
-      {!loading && tips.length > 0 && (
-        <section>
-          <h3>Tips</h3>
-          <ul>{tips.map((t) => <li key={t}>{t}</li>)}</ul>
-        </section>
-      )}
+        {!loading && comparison && (
+          <section className="comparison-card">
+            <h3>Caption optimization</h3>
+            <p className="muted">{comparison.baseline_label} ({comparison.baseline_score}/100)</p>
+            <p className="comparison-caption">{comparison.baseline_caption}</p>
+            <p className="muted">{comparison.optimized_label} ({comparison.optimized_score}/100)</p>
+            <p className="comparison-caption comparison-caption--best">{comparison.optimized_caption}</p>
+            <p><strong>Score delta:</strong> +{comparison.score_delta}</p>
+          </section>
+        )}
 
-      {!loading && hooks.length > 0 && (
-        <section>
-          <h3>Hooks</h3>
-          <ul>{hooks.map((h) => <li key={h}>{h}</li>)}</ul>
-        </section>
-      )}
+        {!loading && ranked.length > 0 && (
+          <section>
+            <h3 className="section-title">Ranked captions</h3>
+            {ranked.map((item) => (
+              <div key={item.rank} className={`caption-card ${item.recommended ? 'caption-card--best' : ''}`}>
+                <div className="caption-card__meta">
+                  <span>#{item.rank} · {Math.round(item.engagement_score)}/100 · {item.popularity_level}</span>
+                  {item.recommended && <span className="caption-card__badge">Recommended</span>}
+                </div>
+                <p>{item.caption}</p>
+                <button type="button" className="btn-copy" onClick={() => copy(item.caption)}>Copy</button>
+              </div>
+            ))}
+          </section>
+        )}
 
-      {!loading && ctas.length > 0 && (
-        <section>
-          <h3>CTAs</h3>
-          <ul>{ctas.map((c) => <li key={c}>{c}</li>)}</ul>
-        </section>
-      )}
+        {!loading && hashtags.length > 0 && (
+          <section>
+            <h3 className="section-title">Hashtags</h3>
+            <div className="hashtag-block">{hashtags.join(' ')}</div>
+            <button type="button" onClick={() => copy(hashtags.join(' '))}>Copy all</button>
+          </section>
+        )}
 
-      {!loading && marketingTips.length > 0 && (
-        <section>
-          <h3>Marketing tips</h3>
-          <ul>{marketingTips.map((t) => <li key={t}>{t}</li>)}</ul>
-        </section>
-      )}
+        {!loading && tips.length > 0 && (
+          <section className="panel">
+            <h3 className="section-title">Tips</h3>
+            <ul className="tips-list">{tips.map((t) => <li key={t}>{t}</li>)}</ul>
+          </section>
+        )}
 
-      <button type="button" onClick={() => { clearEditorHandoff(); navigate('/'); }}>
-        Start over
-      </button>
-    </main>
+        {!loading && hooks.length > 0 && (
+          <section className="panel">
+            <h3 className="section-title">Hooks</h3>
+            <ul className="tips-list">{hooks.map((h) => <li key={h}>{h}</li>)}</ul>
+          </section>
+        )}
+
+        {!loading && ctas.length > 0 && (
+          <section className="panel">
+            <h3 className="section-title">CTAs</h3>
+            <ul className="tips-list">{ctas.map((c) => <li key={c}>{c}</li>)}</ul>
+          </section>
+        )}
+
+        {!loading && marketingTips.length > 0 && (
+          <section className="panel">
+            <h3 className="section-title">Marketing tips</h3>
+            <ul className="tips-list">{marketingTips.map((t) => <li key={t}>{t}</li>)}</ul>
+          </section>
+        )}
+
+        {source === 'api' && (
+          <p className="dashboard-link">
+            <Link to="/dashboard">View this prediction in the analytics dashboard →</Link>
+          </p>
+        )}
+
+        <div className="page-footer-actions">
+          <button type="button" onClick={() => { clearEditorHandoff(); navigate('/'); }}>
+            Start over
+          </button>
+        </div>
+      </main>
+    </>
   );
 }

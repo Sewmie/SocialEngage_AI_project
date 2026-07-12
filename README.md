@@ -9,11 +9,12 @@ Multimodal framework for social media content generation and engagement predicti
 | 1 | Vite + React frontend, FastAPI `/health` |
 | 2 | Image upload, crop, filters, export |
 | 3 | Client-side Gemini captions (fallback) |
-| 4 | **Multimodal API** — CLIP + Gemini + ML engagement |
+| 4 | Multimodal API — CLIP + Gemini + ML engagement |
+| 5 | **Analytics dashboard** — prediction history + model metrics |
 
 ## Setup
 
-### Backend (Phase 4 — required for full pipeline)
+### Backend
 
 ```bash
 cd backend
@@ -24,29 +25,35 @@ cp .env.example .env
 uvicorn app.main:app --reload --port 8000
 ```
 
-First run downloads CLIP weights (~600MB). Allow 1–2 minutes on first caption request.
-
 ### Frontend
 
 ```bash
 cd frontend
 npm install
 cp .env.example .env
-# VITE_API_URL=http://localhost:8000  (uses backend API)
-# VITE_GEMINI_API_KEY=                 (fallback if API unavailable)
+# VITE_API_URL=http://localhost:8000
 npm run dev
 ```
 
-Open http://localhost:5173 — upload, edit, generate captions.
+Open http://localhost:5173
 
-When `VITE_API_URL` is set, the app calls `POST /api/content/generate` (CLIP + server Gemini + ML ranking). If the backend is offline, it falls back to client-side Gemini.
+## Routes
+
+| Path | Description |
+|------|-------------|
+| `/` | Upload & start analysis |
+| `/editor` | Crop, filter, brand/mood config |
+| `/captions` | Generated content + engagement score |
+| `/dashboard` | Analytics — live logs + R²/MAE metrics |
 
 ## API endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Service check |
-| GET | `/api/content/brands` | Brand profile list |
-| POST | `/api/content/generate` | Multimodal pipeline (multipart image upload) |
+| POST | `/api/content/generate` | Multimodal pipeline |
+| GET | `/api/analytics/stats` | Aggregate prediction stats |
 | GET | `/api/analytics/recent` | Recent prediction logs |
-| GET | `/api/analytics/stats` | Aggregate stats |
+| GET | `/api/analytics/model-metrics` | Trained model R², MAE, train/test split |
+
+Predictions are logged to SQLite (`backend/data/analytics.db`) after each API generation.
