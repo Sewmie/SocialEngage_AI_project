@@ -1,0 +1,98 @@
+{
+  "generated_at": "2026-07-12T18:56:38.856875+00:00",
+  "training_dataset": "data/instagram_kim_clean.csv",
+  "transfer_dataset": "data/instagram_data.csv",
+  "n_kim_posts": 9883,
+  "n_transfer_posts": 119,
+  "score_mode": "kim",
+  "clip_features": true,
+  "image_col": "image_path",
+  "test_size": 0.2,
+  "random_state": 42,
+  "citation": "Kim et al. (WWW'20) Instagram Influencer Dataset",
+  "comparisons": [
+    {
+      "evaluation_set": "kim_held_out",
+      "feature_set": "clip_enriched",
+      "regressor": "gradient_boosting",
+      "mae": 7.754,
+      "rmse": 11.878,
+      "r2": 0.075,
+      "n_train": 7906,
+      "n_test": 1977
+    },
+    {
+      "evaluation_set": "kim_held_out",
+      "feature_set": "clip_enriched",
+      "regressor": "ridge",
+      "mae": 7.766,
+      "rmse": 11.887,
+      "r2": 0.074,
+      "n_train": 7906,
+      "n_test": 1977
+    },
+    {
+      "evaluation_set": "kim_held_out",
+      "feature_set": "mean_baseline",
+      "regressor": "constant_mean",
+      "mae": 8.159,
+      "rmse": 12.352,
+      "r2": -0.0,
+      "n_train": 7906,
+      "n_test": 1977
+    },
+    {
+      "evaluation_set": "kharwal_domain_transfer",
+      "feature_set": "clip_enriched",
+      "regressor": "gradient_boosting",
+      "mae": 25.495,
+      "rmse": 29.403,
+      "r2": -3.315,
+      "n_train": 7906,
+      "n_test": 119
+    },
+    {
+      "evaluation_set": "kharwal_domain_transfer",
+      "feature_set": "mean_baseline",
+      "regressor": "constant_mean",
+      "mae": 11.386,
+      "rmse": 14.156,
+      "r2": 0.0,
+      "n_train": 7906,
+      "n_test": 119
+    }
+  ],
+  "kim_best_gbr": {
+    "evaluation_set": "kim_held_out",
+    "feature_set": "clip_enriched",
+    "regressor": "gradient_boosting",
+    "mae": 7.754,
+    "rmse": 11.878,
+    "r2": 0.075,
+    "n_train": 7906,
+    "n_test": 1977
+  },
+  "kharwal_transfer_gbr": {
+    "evaluation_set": "kharwal_domain_transfer",
+    "feature_set": "clip_enriched",
+    "regressor": "gradient_boosting",
+    "mae": 25.495,
+    "rmse": 29.403,
+    "r2": -3.315,
+    "n_train": 7906,
+    "n_test": 119
+  },
+  "transfer_vs_kim_delta": {
+    "mae_change": 17.741,
+    "r2_change": -3.39
+  },
+  "feature_importances_gbr": {
+    "caption_length": 0.3192,
+    "hashtag_count": 0.0564,
+    "aesthetic_score": 0.1875,
+    "scene_confidence": 0.138,
+    "sentiment_proxy": 0.0175,
+    "brand_fit": 0.1729,
+    "mood_match": 0.1085
+  }
+}

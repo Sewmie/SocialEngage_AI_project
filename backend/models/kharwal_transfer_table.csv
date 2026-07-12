@@ -1,0 +1,3 @@
+evaluation_set,feature_set,regressor,mae,rmse,r2,n_train,n_test
+kharwal_domain_transfer,clip_enriched,gradient_boosting,25.495,29.403,-3.315,7906,119
+kharwal_domain_transfer,mean_baseline,constant_mean,11.386,14.156,0.0,7906,119

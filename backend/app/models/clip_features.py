@@ -65,14 +65,18 @@ def _text_embeddings(texts: list[str]):
     return feats
 
 
-def _rank_caption_against_labels(caption: str, labels: list[str], top_k: int = 3) -> list[tuple[str, float]]:
+@lru_cache(maxsize=1)
+def _label_embeddings(labels_key: tuple[str, ...]):
+    return _text_embeddings(list(labels_key))
+
+
+def _rank_feat_against_labels(caption_feat, labels: list[str], top_k: int = 3) -> list[tuple[str, float]]:
     import torch
 
-    if not caption.strip():
+    if caption_feat is None:
         return [(labels[0], 0.25)] if labels else []
 
-    caption_feat = _text_embeddings([caption])[0:1]
-    label_feats = _text_embeddings(labels)
+    label_feats = _label_embeddings(tuple(labels))
     with torch.no_grad():
         logits = (caption_feat @ label_feats.T) * 100.0
         probs = logits.softmax(dim=-1).cpu().numpy()[0]
@@ -80,15 +84,21 @@ def _rank_caption_against_labels(caption: str, labels: list[str], top_k: int = 3
     return ranked[:top_k]
 
 
-def _aesthetic_from_caption(caption: str) -> float:
+def _rank_caption_against_labels(caption: str, labels: list[str], top_k: int = 3) -> list[tuple[str, float]]:
+    if not caption.strip():
+        return [(labels[0], 0.25)] if labels else []
+    caption_feat = _text_embeddings([caption])[0:1]
+    return _rank_feat_against_labels(caption_feat, labels, top_k=top_k)
+
+
+def _aesthetic_from_feat(caption_feat) -> float:
     import torch
 
-    if not caption.strip():
+    if caption_feat is None:
         return 0.5
 
-    caption_feat = _text_embeddings([caption])[0:1]
-    pos_feats = _text_embeddings(AESTHETIC_POSITIVE)
-    neg_feats = _text_embeddings(AESTHETIC_NEGATIVE)
+    pos_feats = _label_embeddings(tuple(AESTHETIC_POSITIVE))
+    neg_feats = _label_embeddings(tuple(AESTHETIC_NEGATIVE))
     refs = torch.cat([pos_feats, neg_feats], dim=0)
     with torch.no_grad():
         logits = (caption_feat @ refs.T) * 100.0
@@ -97,31 +107,55 @@ def _aesthetic_from_caption(caption: str) -> float:
     return round(min(1.0, max(0.0, pos_mass)), 4)
 
 
-def _brand_fit_from_caption(caption: str) -> float:
+def _aesthetic_from_caption(caption: str) -> float:
+    if not caption.strip():
+        return 0.5
+    caption_feat = _text_embeddings([caption])[0:1]
+    return _aesthetic_from_feat(caption_feat)
+
+
+def _brand_fit_from_feat(caption_feat) -> float:
     import torch
 
-    if not caption.strip():
+    if caption_feat is None:
         return 0.65
 
-    caption_feat = _text_embeddings([caption])[0:1]
-    brand_feats = _text_embeddings(BRAND_VOICE_TEXTS)
+    brand_feats = _label_embeddings(tuple(BRAND_VOICE_TEXTS))
     with torch.no_grad():
         sims = (caption_feat @ brand_feats.T).cpu().numpy()[0]
     best = float(sims.max())
-    # cosine in [-1, 1] → [0, 1]
     return round(min(1.0, max(0.0, (best + 1) / 2)), 4)
+
+
+def _brand_fit_from_caption(caption: str) -> float:
+    if not caption.strip():
+        return 0.65
+    caption_feat = _text_embeddings([caption])[0:1]
+    return _brand_fit_from_feat(caption_feat)
 
 
 def extract_caption_features(caption: str) -> dict:
     """CLIP text-side features aligned with inference-time image_analyzer outputs."""
-    scenes = _rank_caption_against_labels(caption, SCENE_LABELS, top_k=3)
-    moods = _rank_caption_against_labels(caption, MOOD_LABELS, top_k=1)
-    objects = _rank_caption_against_labels(caption, OBJECT_LABELS, top_k=4)
+    stripped = caption.strip()
+    if not stripped:
+        return {
+            "aesthetic_score": 0.5,
+            "scene_confidence": 0.4,
+            "mood_match": 0.65,
+            "brand_fit": 0.65,
+            "dominant_mood": "neutral",
+            "top_scene": "",
+            "objects_detected": [],
+        }
+
+    caption_feat = _text_embeddings([caption])[0:1]
+    scenes = _rank_feat_against_labels(caption_feat, SCENE_LABELS, top_k=3)
+    moods = _rank_feat_against_labels(caption_feat, MOOD_LABELS, top_k=1)
+    objects = _rank_feat_against_labels(caption_feat, OBJECT_LABELS, top_k=4)
 
     top_conf = scenes[0][1] if scenes else 0.4
     spread = sum(s[1] for s in scenes[:2])
-    aesthetic_score = _aesthetic_from_caption(caption)
-    # Blend caption aesthetic prompts with scene clarity (matches image_analyzer formula)
+    aesthetic_score = _aesthetic_from_feat(caption_feat)
     aesthetic_blended = round(
         min(1.0, max(0.0, 0.55 * aesthetic_score + 0.25 * top_conf + 0.20 * spread)),
         4,
@@ -131,7 +165,7 @@ def extract_caption_features(caption: str) -> dict:
         "aesthetic_score": aesthetic_blended,
         "scene_confidence": round(top_conf, 4),
         "mood_match": round(moods[0][1] if moods else 0.65, 4),
-        "brand_fit": _brand_fit_from_caption(caption),
+        "brand_fit": _brand_fit_from_feat(caption_feat),
         "dominant_mood": moods[0][0] if moods else "neutral",
         "top_scene": scenes[0][0] if scenes else "",
         "objects_detected": [o[0] for o in objects if o[1] > 0.12],
