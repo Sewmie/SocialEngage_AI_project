@@ -5,6 +5,11 @@ import { FILTER_PRESETS, presetById } from '../lib/filterPresets';
 import { renderEditedImage, downloadBlobUrl, type CropState } from '../lib/imageCanvas';
 import { saveEditorHandoff } from '../lib/editorSession';
 import '../styles/editor.css';
+import { MARKETING_MOODS, LIFESTYLE_MOODS } from '../lib/captionMoods';
+import { BRAND_PROFILES } from '../lib/brandProfiles';
+import { CAMPAIGN_GOALS } from '../lib/marketingGoals';
+import type { ContentPath } from '../lib/contentPath';
+
 
 type LocationState = { imageUrl?: string; fileName?: string };
 
@@ -12,6 +17,11 @@ export default function Editor() {
   const { state } = useLocation() as { state: LocationState };
   const navigate = useNavigate();
   const imageUrl = state?.imageUrl;
+  const [contentPath, setContentPath] = useState<ContentPath>('marketing');
+  const [moodId, setMoodId] = useState('professional');
+  const [brandId, setBrandId] = useState('local_sme');
+  const [campaignGoalId, setCampaignGoalId] = useState('awareness');
+  const moods = contentPath === 'marketing' ? MARKETING_MOODS : LIFESTYLE_MOODS;
 
   const [aspectId, setAspectId] = useState(ASPECT_OPTIONS[1].id);
   const [filterId, setFilterId] = useState(FILTER_PRESETS[0].id);
@@ -53,9 +63,13 @@ export default function Editor() {
       imageBlobUrl: url,
       filterName: preset.name,
       aspectLabel: aspect.label,
+      moodId,
+      brandId,
+      contentPath,
+      campaignGoalId: contentPath === 'marketing' ? campaignGoalId : undefined,
     });
     navigate('/captions');
-  }, [imageUrl, aspect, crop, preset, navigate]);
+  }, [imageUrl, aspect, crop, preset, navigate, moodId, brandId, contentPath, campaignGoalId]);
 
   if (!imageUrl) {
     return (
@@ -125,6 +139,84 @@ export default function Editor() {
           ))}
         </div>
       </section>
+
+      <section>
+        <h3>Analysis mode</h3>
+        <div className="chip-row">
+          <button
+            type="button"
+            className={contentPath === 'marketing' ? 'chip chip--active' : 'chip'}
+            onClick={() => {
+              setContentPath('marketing');
+              setMoodId('professional');
+            }}
+          >
+            Full marketing analysis
+          </button>
+          <button
+            type="button"
+            className={contentPath === 'casual' ? 'chip chip--active' : 'chip'}
+            onClick={() => {
+              setContentPath('casual');
+              setMoodId('chill');
+            }}
+          >
+            Quick personal post
+          </button>
+        </div>
+      </section>
+
+      <section>
+        <h3>Caption tone</h3>
+        <div className="chip-row chip-row--wrap">
+          {moods.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              className={m.id === moodId ? 'chip chip--active' : 'chip'}
+              onClick={() => setMoodId(m.id)}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {contentPath === 'marketing' && (
+        <>
+          <section>
+            <h3>Brand voice</h3>
+            <div className="chip-row chip-row--wrap">
+              {BRAND_PROFILES.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  className={b.id === brandId ? 'chip chip--active' : 'chip'}
+                  onClick={() => setBrandId(b.id)}
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section>
+            <h3>Campaign goal</h3>
+            <div className="chip-row chip-row--wrap">
+              {CAMPAIGN_GOALS.map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  className={g.id === campaignGoalId ? 'chip chip--active' : 'chip'}
+                  onClick={() => setCampaignGoalId(g.id)}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+          </section>
+        </>
+      )}
 
       <div className="editor__actions">
         <button type="button" onClick={onDownload}>Download JPEG</button>

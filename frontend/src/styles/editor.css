@@ -6,8 +6,15 @@
 }
 .editor__preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip-row--wrap { flex-wrap: wrap; }
 .chip { padding: 8px 12px; border-radius: 999px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
 .chip--active { border-color: #833AB4; background: #f3e8ff; }
 .editor__actions { display: flex; gap: 12px; margin-top: 24px; }
 button.primary { background: linear-gradient(90deg, #833AB4, #E1306C); color: #fff; border: none; padding: 10px 16px; border-radius: 8px; }
 label { display: block; margin: 8px 0; }
+.muted { opacity: 0.65; }
+.error { color: #c0392b; }
+.score-box { padding: 12px; background: #f3e8ff; border-radius: 8px; margin: 16px 0; }
+.caption-card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin: 8px 0; }
+.caption-card--best { border-color: #833AB4; background: #faf5ff; }
+.caption-card__meta { font-size: 12px; opacity: 0.7; margin-bottom: 6px; }
