@@ -1,5 +1,12 @@
 import type { ContentPath } from './contentPath';
 
+export type VisualAnalysis = {
+  scene_labels: string[];
+  dominant_mood: string;
+  aesthetic_score: number;
+  objects_detected: string[];
+};
+
 export type EngagementPrediction = {
   engagement_score: number;
   popularity_level: 'low' | 'medium' | 'high';
@@ -35,10 +42,11 @@ export type GeneratedContent = {
   captions: string[];
   ranked_captions?: RankedCaption[];
   hashtags: string[];
+  visual_analysis?: VisualAnalysis;
   engagement?: EngagementPrediction;
   engagement_tips?: string[];
   engagement_comparison?: EngagementComparison | null;
   marketing?: MarketingExtras;
   content_path?: ContentPath;
-  source: 'client';
+  source: 'api' | 'client';
 };

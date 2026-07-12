@@ -1,8 +1,9 @@
 import { captionMoodById } from './captionMoods';
 import { brandById } from './brandProfiles';
-import { campaignGoalById } from './marketingGoals';
 import type { ContentPath } from './contentPath';
+import { generateContentViaApi, isApiConfigured } from './contentApi';
 import type { GeneratedContent } from './types';
+import { campaignGoalById } from './marketingGoals';
 import { generateContentClient } from './gemini';
 
 export async function generateSocialContent(
@@ -13,11 +14,26 @@ export async function generateSocialContent(
   contentPath: ContentPath = 'marketing',
   campaignGoalId?: string,
 ): Promise<GeneratedContent> {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (isApiConfigured()) {
+    try {
+      const result = await generateContentViaApi(
+        imageUri,
+        filterName,
+        moodId,
+        brandId,
+        contentPath,
+        campaignGoalId,
+      );
+      return { ...result, content_path: contentPath };
+    } catch {
+      // fall through to client-side Gemini
+    }
+  }
 
   const mood = captionMoodById(moodId);
   const brand = brandById(brandId);
   const goal = campaignGoalById(campaignGoalId);
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
   const client = await generateContentClient({
     imageUri,

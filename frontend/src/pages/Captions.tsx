@@ -5,7 +5,7 @@ import { generateSocialContent } from '../lib/generateContent';
 import { formatGeminiError } from '../lib/geminiModels';
 import { captionMoodById } from '../lib/captionMoods';
 import { brandById } from '../lib/brandProfiles';
-import type { RankedCaption } from '../lib/types';
+import type { EngagementComparison, RankedCaption, VisualAnalysis } from '../lib/types';
 
 export default function Captions() {
   const navigate = useNavigate();
@@ -13,10 +13,13 @@ export default function Captions() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [source, setSource] = useState<'api' | 'client' | null>(null);
+  const [visual, setVisual] = useState<VisualAnalysis | null>(null);
   const [ranked, setRanked] = useState<RankedCaption[]>([]);
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [score, setScore] = useState<number | null>(null);
   const [tips, setTips] = useState<string[]>([]);
+  const [comparison, setComparison] = useState<EngagementComparison | null>(null);
   const [hooks, setHooks] = useState<string[]>([]);
   const [ctas, setCtas] = useState<string[]>([]);
   const [marketingTips, setMarketingTips] = useState<string[]>([]);
@@ -41,10 +44,13 @@ export default function Captions() {
         );
         if (cancelled) return;
 
+        setSource(result.source);
+        setVisual(result.visual_analysis ?? null);
         setRanked(result.ranked_captions ?? []);
         setHashtags(result.hashtags);
         setScore(result.engagement?.engagement_score ?? null);
         setTips(result.engagement_tips ?? []);
+        setComparison(result.engagement_comparison ?? null);
         setHooks(result.marketing?.hooks ?? []);
         setCtas(result.marketing?.ctas ?? []);
         setMarketingTips(result.marketing?.marketing_tips ?? []);
@@ -75,6 +81,7 @@ export default function Captions() {
 
   const mood = captionMoodById(handoff?.moodId);
   const brand = brandById(handoff?.brandId);
+  const scoreLabel = source === 'api' ? 'ML engagement score' : 'Engagement score (heuristic)';
 
   return (
     <main className="page">
@@ -89,15 +96,45 @@ export default function Captions() {
 
       <p className="muted">
         {mood.label} · {brand.label} · {handoff?.contentPath === 'marketing' ? 'Marketing' : 'Casual'}
+        {source && (
+          <> · <span className={`source-badge source-badge--${source}`}>
+            {source === 'api' ? 'Multimodal API (CLIP + Gemini + ML)' : 'Client fallback (Gemini)'}
+          </span></>
+        )}
       </p>
 
-      {loading && <p>Generating captions with Gemini… (15–45s)</p>}
+      {loading && (
+        <p>
+          Running multimodal pipeline… CLIP analysis + Gemini captions + ML ranking (30–90s on first run)
+        </p>
+      )}
       {error && <p className="error">{error}</p>}
+
+      {!loading && visual && (
+        <section className="visual-card">
+          <h3>CLIP visual analysis</h3>
+          <p><strong>Scenes:</strong> {visual.scene_labels.join(', ') || '—'}</p>
+          <p><strong>Mood:</strong> {visual.dominant_mood}</p>
+          <p><strong>Objects:</strong> {visual.objects_detected.join(', ') || '—'}</p>
+          <p><strong>Aesthetic score:</strong> {Math.round(visual.aesthetic_score * 100)}%</p>
+        </section>
+      )}
 
       {!loading && !error && score !== null && (
         <div className="score-box">
-          <strong>Engagement score (heuristic):</strong> {score}/100
+          <strong>{scoreLabel}:</strong> {Math.round(score)}/100
         </div>
+      )}
+
+      {!loading && comparison && (
+        <section className="comparison-card">
+          <h3>Caption optimization</h3>
+          <p className="muted">{comparison.baseline_label} ({comparison.baseline_score}/100)</p>
+          <p className="comparison-caption">{comparison.baseline_caption}</p>
+          <p className="muted">{comparison.optimized_label} ({comparison.optimized_score}/100)</p>
+          <p className="comparison-caption comparison-caption--best">{comparison.optimized_caption}</p>
+          <p><strong>Score delta:</strong> +{comparison.score_delta}</p>
+        </section>
       )}
 
       {!loading && ranked.length > 0 && (
@@ -106,7 +143,7 @@ export default function Captions() {
           {ranked.map((item) => (
             <div key={item.rank} className={`caption-card ${item.recommended ? 'caption-card--best' : ''}`}>
               <div className="caption-card__meta">
-                #{item.rank} · {item.engagement_score}/100 · {item.popularity_level}
+                #{item.rank} · {Math.round(item.engagement_score)}/100 · {item.popularity_level}
                 {item.recommended && ' · Recommended'}
               </div>
               <p>{item.caption}</p>

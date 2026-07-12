@@ -18,3 +18,10 @@ label { display: block; margin: 8px 0; }
 .caption-card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin: 8px 0; }
 .caption-card--best { border-color: #833AB4; background: #faf5ff; }
 .caption-card__meta { font-size: 12px; opacity: 0.7; margin-bottom: 6px; }
+.visual-card { padding: 12px; background: #f8f9fa; border-radius: 8px; margin: 16px 0; }
+.comparison-card { padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin: 16px 0; }
+.comparison-caption { font-style: italic; margin: 4px 0 12px; }
+.comparison-caption--best { color: #833AB4; font-weight: 500; }
+.source-badge { font-size: 12px; padding: 2px 8px; border-radius: 999px; }
+.source-badge--api { background: #e8f5e9; color: #2e7d32; }
+.source-badge--client { background: #fff3e0; color: #e65100; }
