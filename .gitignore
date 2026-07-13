@@ -14,7 +14,9 @@ credentials.json
 # Data & models (often too large for GitHub)
 data/
 datasets/
-models/
+models/*
+!models/engagement.joblib
+!models/engagement.metrics.json
 *.pkl
 *.h5
 *.pt
@@ -32,3 +34,12 @@ models/
 # Logs
 logs/
 *.log
+
+# Node / Vite / React
+node_modules/
+dist/
+.vite/
+*.local
+
+.env
+.env.local

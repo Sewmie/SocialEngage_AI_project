@@ -1,0 +1,22 @@
+{
+  "mae": 4.46,
+  "rmse": 7.782,
+  "r2": 0.603,
+  "n_train": 7906,
+  "n_test": 1977,
+  "likes_mae": 1484.808,
+  "likes_rmse": 4081.018,
+  "likes_r2": 0.511,
+  "clip_features": true,
+  "training_domain": "kim_www20",
+  "feature_importances_gbr": {
+    "caption_length": 0.1093,
+    "hashtag_count": 0.029,
+    "aesthetic_score": 0.0,
+    "scene_confidence": 0.0,
+    "sentiment_proxy": 0.0075,
+    "brand_fit": 0.0,
+    "mood_match": 0.0,
+    "log_followers_norm": 0.8542
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "type": "linear",
+  "feature_cols": [
+    "caption_length",
+    "hashtag_count",
+    "aesthetic_score",
+    "scene_confidence",
+    "sentiment_proxy",
+    "brand_fit",
+    "mood_match",
+    "log_followers_norm"
+  ],
+  "weights": [
+    -4.222695,
+    0.059232,
+    0.0,
+    0.0,
+    -0.672639,
+    0.0,
+    -0.0,
+    62.666744
+  ],
+  "bias": -36.692244,
+  "metrics": {
+    "mae": 4.46,
+    "rmse": 7.782,
+    "r2": 0.603,
+    "n_train": 7906,
+    "n_test": 1977,
+    "clip_features": true,
+    "training_domain": "kim_www20"
+  }
+}
