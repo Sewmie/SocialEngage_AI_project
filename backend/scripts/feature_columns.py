@@ -12,3 +12,4 @@ FEATURE_COLS = [
 ]
 
 TARGET = "engagement_score"
+TARGET_LIKES = "likes"

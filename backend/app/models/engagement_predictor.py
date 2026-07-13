@@ -152,6 +152,64 @@ def _level_from_score(score: float) -> str:
     return "low"
 
 
+def _engagement_score_kim_infer(likes: float, bundle) -> float:
+    stats = _feature_stats(bundle)
+    p99_likes = float(stats.get("likes_p99") or 25_741.68)
+    p99_comments = float(stats.get("comments_p99") or 150.0)
+    comment_ratio = float(stats.get("comments_per_like_median") or 0.0)
+    comments = likes * comment_ratio
+    like_n = min(1.0, likes / max(p99_likes, 1))
+    comment_n = min(1.0, comments / max(p99_comments, 1))
+    raw = 0.65 * like_n + 0.35 * comment_n
+    return round(100 * raw, 1)
+
+
+def _level_from_likes(likes: float, bundle) -> str:
+    stats = _feature_stats(bundle)
+    p33 = float(stats.get("likes_p33") or 462)
+    p66 = float(stats.get("likes_p66") or 2_050)
+    if likes >= p66:
+        return "high"
+    if likes >= p33:
+        return "medium"
+    return "low"
+
+
+def _predict_likes(features: np.ndarray, model_bundle) -> float | None:
+    if not isinstance(model_bundle, dict) or not model_bundle.get("likes_model"):
+        return None
+    log_pred = float(model_bundle["likes_model"].predict(features.reshape(1, -1))[0])
+    return max(0.0, float(np.expm1(log_pred)))
+
+
+def _compose_prediction(
+    features: np.ndarray,
+    factors: dict,
+    model_bundle,
+) -> dict:
+    predicted_likes = _predict_likes(features, model_bundle)
+
+    if predicted_likes is not None:
+        likes = predicted_likes
+        engagement_score = _engagement_score_kim_infer(likes, model_bundle)
+        popularity_level = _level_from_likes(likes, model_bundle)
+    else:
+        score = _score_features(features, model_bundle)
+        engagement_score = round(score, 1)
+        popularity_level = _level_from_score(score)
+        likes = None
+
+    result = {
+        "engagement_score": engagement_score,
+        "popularity_level": popularity_level,
+        "factors": factors,
+    }
+    if likes is not None:
+        result["predicted_likes"] = int(round(likes))
+        result["factors"] = {**factors, "predicted_likes": int(round(likes))}
+    return result
+
+
 def _build_features(
     captions: list[str],
     hashtags: list[str],
@@ -264,13 +322,11 @@ def rank_captions_by_engagement(
         features, factors = _build_features(
             [caption], hashtags, visual, mood_id, brand_id, follower_count, model_bundle
         )
-        score = _score_features(features, model_bundle)
+        prediction = _compose_prediction(features, factors, model_bundle)
         ranked.append(
             {
                 "caption": caption,
-                "engagement_score": round(score, 1),
-                "popularity_level": _level_from_score(score),
-                "factors": factors,
+                **prediction,
             }
         )
 
@@ -288,15 +344,21 @@ def build_engagement_comparison(ranked: list[dict]) -> dict | None:
     worst = ranked[-1]
     best = ranked[0]
     delta = round(best["engagement_score"] - worst["engagement_score"], 1)
+    likes_delta = None
+    if best.get("predicted_likes") is not None and worst.get("predicted_likes") is not None:
+        likes_delta = int(best["predicted_likes"]) - int(worst["predicted_likes"])
 
     return {
         "baseline_label": "Standard caption (no ML ranking)",
         "baseline_caption": worst["caption"],
         "baseline_score": worst["engagement_score"],
+        "baseline_likes": worst.get("predicted_likes"),
         "optimized_label": "ML-recommended caption",
         "optimized_caption": best["caption"],
         "optimized_score": best["engagement_score"],
+        "optimized_likes": best.get("predicted_likes"),
         "score_delta": delta,
+        "likes_delta": likes_delta,
     }
 
 
@@ -312,13 +374,7 @@ def predict_engagement(
     features, factors = _build_features(
         captions, hashtags, visual, mood_id, brand_id, follower_count, model_bundle
     )
-    score = _score_features(features, model_bundle)
-
-    return {
-        "engagement_score": round(score, 1),
-        "popularity_level": _level_from_score(score),
-        "factors": factors,
-    }
+    return _compose_prediction(features, factors, model_bundle)
 
 
 def _extract_hashtags(text: str) -> list[str]:
@@ -373,24 +429,20 @@ def score_user_caption(
     features, factors = _build_features(
         [text], hashtags, visual, mood_id, brand_id, follower_count, model_bundle
     )
-    score = round(_score_features(features, model_bundle), 1)
+    prediction = _compose_prediction(features, factors, model_bundle)
 
     result: dict = {
         "caption": text,
         "hashtags_detected": hashtags,
-        "engagement": {
-            "engagement_score": score,
-            "popularity_level": _level_from_score(score),
-            "factors": factors,
-        },
-        "engagement_tips": build_engagement_tips(factors),
+        "engagement": prediction,
+        "engagement_tips": build_engagement_tips(prediction["factors"]),
     }
 
     if best_score is not None:
         result["vs_best"] = {
             "best_caption": best_caption or "",
             "best_score": round(float(best_score), 1),
-            "score_delta": round(float(best_score) - score, 1),
+            "score_delta": round(float(best_score) - prediction["engagement_score"], 1),
         }
 
     return result

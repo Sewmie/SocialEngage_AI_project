@@ -98,6 +98,7 @@ export default function Dashboard() {
   const displayMae = modelMetrics?.mae != null ? modelMetrics.mae.toFixed(2) : MODEL_STATS.mae;
   const displayTrain = modelMetrics?.n_train ?? MODEL_STATS.dataset;
   const displayTest = modelMetrics?.n_test ?? '24';
+  const displayLikesMae = modelMetrics?.likes_mae != null ? Math.round(modelMetrics.likes_mae).toLocaleString() : null;
   const importanceRows = featureImportanceRows(
     modelMetrics?.feature_importances_gbr,
     modelMetrics?.feature_labels,
@@ -150,6 +151,13 @@ export default function Dashboard() {
                 <strong className="metric-card__value">{displayTest}</strong>
                 <span className="metric-card__hint">80/20 split</span>
               </div>
+              {displayLikesMae && (
+                <div className="metric-card">
+                  <span className="metric-card__label">Likes MAE</span>
+                  <strong className="metric-card__value">{displayLikesMae}</strong>
+                  <span className="metric-card__hint">Predicted vs actual likes</span>
+                </div>
+              )}
             </section>
 
             <section className="stats-grid">

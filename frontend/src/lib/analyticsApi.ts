@@ -37,6 +37,8 @@ export type ModelMetrics = {
   clip_features: boolean | null;
   feature_importances_gbr?: Record<string, number> | null;
   feature_labels?: Record<string, string> | null;
+  likes_mae?: number | null;
+  likes_r2?: number | null;
 };
 
 async function fetchJson<T>(path: string): Promise<T> {

@@ -239,6 +239,8 @@ def prepare(
                 "brand_fit": brand_fit,
                 "mood_match": mood_match,
                 "log_followers_norm": log_followers_norm,
+                "likes": float(likes_series.iloc[n]),
+                "comments": float(comments_series.iloc[n]),
                 "engagement_score": engagement_score,
             }
         )

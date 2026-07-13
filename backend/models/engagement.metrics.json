@@ -4,6 +4,9 @@
   "r2": 0.603,
   "n_train": 7906,
   "n_test": 1977,
+  "likes_mae": 1484.808,
+  "likes_rmse": 4081.018,
+  "likes_r2": 0.511,
   "clip_features": true,
   "training_domain": "kim_www20",
   "feature_importances_gbr": {

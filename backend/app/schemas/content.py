@@ -11,6 +11,7 @@ class VisualAnalysis(BaseModel):
 
 
 class EngagementPrediction(BaseModel):
+    predicted_likes: int | None = Field(default=None, ge=0, description="Predicted like count")
     engagement_score: float = Field(ge=0, le=100, description="Predicted engagement index 0–100")
     popularity_level: str = Field(description="low | medium | high")
     factors: dict[str, float] = Field(default_factory=dict)
@@ -18,6 +19,7 @@ class EngagementPrediction(BaseModel):
 
 class RankedCaption(BaseModel):
     caption: str
+    predicted_likes: int | None = Field(default=None, ge=0)
     engagement_score: float = Field(ge=0, le=100)
     popularity_level: str
     rank: int = Field(ge=1)
@@ -29,10 +31,13 @@ class EngagementComparison(BaseModel):
     baseline_label: str
     baseline_caption: str
     baseline_score: float = Field(ge=0, le=100)
+    baseline_likes: int | None = Field(default=None, ge=0)
     optimized_label: str
     optimized_caption: str
     optimized_score: float = Field(ge=0, le=100)
+    optimized_likes: int | None = Field(default=None, ge=0)
     score_delta: float
+    likes_delta: int | None = None
 
 
 class MarketingExtras(BaseModel):

@@ -6,8 +6,39 @@ import { scoreCaptionViaApi, isApiConfigured } from '../lib/contentApi';
 import { formatGeminiError } from '../lib/geminiModels';
 import { captionMoodById } from '../lib/captionMoods';
 import { brandById } from '../lib/brandProfiles';
-import type { CaptionScoreResult, EngagementComparison, RankedCaption, VisualAnalysis } from '../lib/types';
+import type { CaptionScoreResult, EngagementComparison, EngagementPrediction, RankedCaption, VisualAnalysis } from '../lib/types';
 import { AppNav } from '../components/AppNav';
+
+function formatLikes(value: number | null | undefined): string {
+  if (value == null) return '—';
+  return value.toLocaleString();
+}
+
+function levelClass(level: string): string {
+  if (level === 'high') return 'level level--high';
+  if (level === 'medium') return 'level level--medium';
+  return 'level level--low';
+}
+
+function PredictionSummary({ engagement, label }: { engagement: EngagementPrediction; label: string }) {
+  return (
+    <div className="prediction-trio">
+      <div className="prediction-trio__item prediction-trio__item--primary">
+        <span className="prediction-trio__label">Predicted likes</span>
+        <strong className="prediction-trio__value">{formatLikes(engagement.predicted_likes)}</strong>
+      </div>
+      <div className="prediction-trio__item">
+        <span className="prediction-trio__label">Engagement score</span>
+        <strong className="prediction-trio__value">{Math.round(engagement.engagement_score)}/100</strong>
+      </div>
+      <div className="prediction-trio__item">
+        <span className="prediction-trio__label">Popularity</span>
+        <span className={levelClass(engagement.popularity_level)}>{engagement.popularity_level}</span>
+      </div>
+      <p className="prediction-trio__hint muted">{label}</p>
+    </div>
+  );
+}
 
 export default function Captions() {
   const navigate = useNavigate();
@@ -20,6 +51,8 @@ export default function Captions() {
   const [ranked, setRanked] = useState<RankedCaption[]>([]);
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [score, setScore] = useState<number | null>(null);
+  const [predictedLikes, setPredictedLikes] = useState<number | null>(null);
+  const [popularityLevel, setPopularityLevel] = useState<string | null>(null);
   const [tips, setTips] = useState<string[]>([]);
   const [comparison, setComparison] = useState<EngagementComparison | null>(null);
   const [hooks, setHooks] = useState<string[]>([]);
@@ -55,6 +88,8 @@ export default function Captions() {
         setRanked(result.ranked_captions ?? []);
         setHashtags(result.hashtags);
         setScore(result.engagement?.engagement_score ?? null);
+        setPredictedLikes(result.engagement?.predicted_likes ?? null);
+        setPopularityLevel(result.engagement?.popularity_level ?? null);
         setTips(result.engagement_tips ?? []);
         setComparison(result.engagement_comparison ?? null);
         setHooks(result.marketing?.hooks ?? []);
@@ -120,7 +155,19 @@ export default function Captions() {
 
   const mood = captionMoodById(handoff?.moodId);
   const brand = brandById(handoff?.brandId);
-  const scoreLabel = source === 'api' ? 'ML engagement score' : 'Engagement score (heuristic)';
+  const scoreLabel = source === 'api'
+    ? 'ML engagement prediction (Kim-trained GBR)'
+    : 'Engagement score (heuristic)';
+
+  const topEngagement: EngagementPrediction | null =
+    score != null && popularityLevel
+      ? {
+          predicted_likes: predictedLikes,
+          engagement_score: score,
+          popularity_level: popularityLevel as EngagementPrediction['popularity_level'],
+          factors: {},
+        }
+      : null;
 
   return (
     <>
@@ -180,26 +227,29 @@ export default function Captions() {
           </section>
         )}
 
-        {!loading && !error && score !== null && (
-          <div className="score-box">
-            <div className="score-box__ring">
-              <span className="score-box__value">{Math.round(score)}</span>
-            </div>
-            <div className="score-box__label">
-              <strong>{scoreLabel}</strong>
-              out of 100 — predicted engagement potential
-            </div>
-          </div>
+        {!loading && !error && topEngagement && (
+          <PredictionSummary engagement={topEngagement} label={scoreLabel} />
         )}
 
         {!loading && comparison && (
           <section className="comparison-card">
             <h3>Caption optimization</h3>
-            <p className="muted">{comparison.baseline_label} ({comparison.baseline_score}/100)</p>
+            <p className="muted">
+              {comparison.baseline_label}
+              {' '}
+              ({formatLikes(comparison.baseline_likes)} likes · {comparison.baseline_score}/100)
+            </p>
             <p className="comparison-caption">{comparison.baseline_caption}</p>
-            <p className="muted">{comparison.optimized_label} ({comparison.optimized_score}/100)</p>
+            <p className="muted">
+              {comparison.optimized_label}
+              {' '}
+              ({formatLikes(comparison.optimized_likes)} likes · {comparison.optimized_score}/100)
+            </p>
             <p className="comparison-caption comparison-caption--best">{comparison.optimized_caption}</p>
             <p><strong>Score delta:</strong> +{comparison.score_delta}</p>
+            {comparison.likes_delta != null && (
+              <p><strong>Likes delta:</strong> +{comparison.likes_delta.toLocaleString()}</p>
+            )}
           </section>
         )}
 
@@ -209,7 +259,13 @@ export default function Captions() {
             {ranked.map((item) => (
               <div key={item.rank} className={`caption-card ${item.recommended ? 'caption-card--best' : ''}`}>
                 <div className="caption-card__meta">
-                  <span>#{item.rank} · {Math.round(item.engagement_score)}/100 · {item.popularity_level}</span>
+                  <span>
+                    #{item.rank}
+                    {item.predicted_likes != null ? ` · ~${formatLikes(item.predicted_likes)} likes` : ''}
+                    {' · '}{Math.round(item.engagement_score)}/100
+                    {' · '}
+                    <span className={levelClass(item.popularity_level)}>{item.popularity_level}</span>
+                  </span>
                   {item.recommended && <span className="caption-card__badge">Recommended</span>}
                 </div>
                 <p>{item.caption}</p>
@@ -243,15 +299,10 @@ export default function Captions() {
             {scoreError && <p className="error">{scoreError}</p>}
             {customScore && (
               <div className="score-my-caption__result">
-                <div className="score-box score-box--compact">
-                  <div className="score-box__ring">
-                    <span className="score-box__value">{Math.round(customScore.engagement.engagement_score)}</span>
-                  </div>
-                  <div className="score-box__label">
-                    <strong>Your caption score</strong>
-                    {customScore.engagement.popularity_level} · out of 100
-                  </div>
-                </div>
+                <PredictionSummary
+                  engagement={customScore.engagement}
+                  label="Your caption — ML prediction"
+                />
                 {customScore.vs_best && (
                   <p className="score-my-caption__delta">
                     vs ML-recommended ({Math.round(customScore.vs_best.best_score)}/100):{' '}

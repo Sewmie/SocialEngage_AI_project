@@ -2,18 +2,18 @@ export const APP_NAME = 'SocialEngage AI';
 export const APP_TAGLINE = 'Instagram engagement prediction powered by multimodal ML';
 
 export const MODEL_STATS = {
-  r2: '0.08',
-  mae: '7.75',
+  r2: '0.60',
+  mae: '4.46',
   dataset: '9,883',
-  model: 'CLIP + Gradient Boosting',
+  model: 'Gradient Boosting · Kim WWW\'20',
 } as const;
 
 export const PIPELINE_MODULES = [
   {
     id: 'analytics',
     title: 'Engagement Predictor',
-    tech: 'Gradient Boosting · CLIP features',
-    desc: 'Scores each caption 0–100, ranks recommendations, explains factors',
+    tech: 'Gradient Boosting · Kim WWW\'20',
+    desc: 'Predicts likes, engagement score 0–100, and popularity level (low/medium/high)',
   },
   {
     id: 'vision',

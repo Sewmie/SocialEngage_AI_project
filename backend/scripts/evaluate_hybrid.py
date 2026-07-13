@@ -34,7 +34,7 @@ sys.path.insert(0, str(BACKEND_ROOT))
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from prepare_engagement_dataset import prepare  # noqa: E402
-from feature_columns import FEATURE_COLS, TARGET  # noqa: E402
+from feature_columns import FEATURE_COLS, TARGET, TARGET_LIKES  # noqa: E402
 from clean_kim_dataset import followers_p99, normalize_followers  # noqa: E402
 
 RANDOM_STATE = 42
@@ -141,6 +141,25 @@ def _transfer_eval(
     }
 
 
+def _likes_calibration(df: pd.DataFrame) -> dict:
+    if TARGET_LIKES not in df.columns:
+        return {}
+    likes = pd.to_numeric(df[TARGET_LIKES], errors="coerce").fillna(0).clip(lower=0)
+    comments = (
+        pd.to_numeric(df["comments"], errors="coerce").fillna(0).clip(lower=0)
+        if "comments" in df.columns
+        else pd.Series([0.0] * len(df))
+    )
+    ratio = (comments / likes.replace(0, np.nan)).replace([np.inf, -np.inf], np.nan).median()
+    return {
+        "likes_p33": float(likes.quantile(0.33)),
+        "likes_p66": float(likes.quantile(0.66)),
+        "likes_p99": float(likes.quantile(0.99)) or 1.0,
+        "comments_p99": float(comments.quantile(0.99)) or 1.0,
+        "comments_per_like_median": float(ratio) if pd.notna(ratio) else 0.0,
+    }
+
+
 def retrain_production_model(
     df_clip: pd.DataFrame,
     out_joblib: Path,
@@ -152,9 +171,24 @@ def retrain_production_model(
     clean = df_clip.dropna(subset=FEATURE_COLS + [TARGET])
     X = clean[FEATURE_COLS].values
     y = clean[TARGET].values
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=RANDOM_STATE
+    likes_raw = (
+        pd.to_numeric(clean[TARGET_LIKES], errors="coerce").fillna(0).clip(lower=0).values
+        if TARGET_LIKES in clean.columns
+        else None
     )
+
+    if likes_raw is not None:
+        X_train, X_test, y_train, y_test, likes_train, likes_test = train_test_split(
+            X, y, likes_raw, test_size=0.2, random_state=RANDOM_STATE
+        )
+        y_log_train = np.log1p(likes_train)
+        y_log_test = np.log1p(likes_test)
+    else:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=RANDOM_STATE
+        )
+        likes_test = None
+        y_log_train = None
 
     model = GradientBoostingRegressor(
         n_estimators=120,
@@ -170,11 +204,32 @@ def retrain_production_model(
         for col, val in zip(FEATURE_COLS, model.feature_importances_, strict=False)
     }
 
+    likes_model = None
+    likes_metrics: dict = {}
+    likes_calibration = _likes_calibration(clean)
+    if likes_raw is not None and y_log_train is not None and likes_test is not None:
+        likes_model = GradientBoostingRegressor(
+            n_estimators=120,
+            max_depth=4,
+            learning_rate=0.08,
+            random_state=RANDOM_STATE,
+        )
+        likes_model.fit(X_train, y_log_train)
+        likes_pred = np.expm1(np.clip(likes_model.predict(X_test), 0, None))
+        likes_metrics = _metrics(likes_test, likes_pred)
+        likes_metrics = {
+            "likes_mae": likes_metrics["mae"],
+            "likes_rmse": likes_metrics["rmse"],
+            "likes_r2": likes_metrics["r2"],
+        }
+
     bundle = {
         "model": model,
+        "likes_model": likes_model,
         "feature_cols": FEATURE_COLS,
         "metrics": {
             **metrics,
+            **likes_metrics,
             "clip_features": True,
             "training_domain": "kim_www20",
             "feature_importances_gbr": importances,
@@ -182,6 +237,7 @@ def retrain_production_model(
         "feature_stats": {
             "followers_p99": followers_p99,
             "default_followers": default_followers,
+            **likes_calibration,
         },
     }
     out_joblib.parent.mkdir(parents=True, exist_ok=True)
@@ -198,7 +254,7 @@ def retrain_production_model(
     }
     out_json.write_text(json.dumps(linear_bundle, indent=2))
     out_joblib.with_suffix(".metrics.json").write_text(json.dumps(bundle["metrics"], indent=2))
-    return metrics
+    return {**metrics, **likes_metrics}
 
 
 def main() -> None:
@@ -244,6 +300,10 @@ def main() -> None:
             normalize_followers(float(f), p99, default=default)
             for f in pd.to_numeric(kim_df.get("followers", 0), errors="coerce").fillna(0)
         ]
+        if "Likes" in kim_df.columns and len(kim_df) == len(features_df):
+            features_df[TARGET_LIKES] = pd.to_numeric(kim_df["Likes"], errors="coerce").fillna(0).clip(lower=0)
+        if "Comments" in kim_df.columns and len(kim_df) == len(features_df):
+            features_df["comments"] = pd.to_numeric(kim_df["Comments"], errors="coerce").fillna(0).clip(lower=0)
         features_df.to_csv(features_path, index=False)
         print(f"Added log_followers_norm → {features_path} (p99={p99:,.0f}, default={default:,.0f})")
         if not args.retrain_only:
@@ -255,6 +315,14 @@ def main() -> None:
         features_df = pd.read_csv(features_path)
         if "log_followers_norm" not in features_df.columns:
             raise SystemExit("Run with --refresh-followers first to add log_followers_norm")
+        if TARGET_LIKES not in features_df.columns:
+            kim_path = Path(args.kim_csv)
+            if kim_path.is_file():
+                kim_df = pd.read_csv(kim_path, encoding="latin-1")
+                if "Likes" in kim_df.columns and len(kim_df) == len(features_df):
+                    features_df[TARGET_LIKES] = pd.to_numeric(kim_df["Likes"], errors="coerce").fillna(0).clip(lower=0)
+                if "Comments" in kim_df.columns and len(kim_df) == len(features_df):
+                    features_df["comments"] = pd.to_numeric(kim_df["Comments"], errors="coerce").fillna(0).clip(lower=0)
         kim_df = pd.read_csv(Path(args.kim_csv), encoding="latin-1") if Path(args.kim_csv).is_file() else pd.DataFrame()
         p99 = followers_p99(kim_df) if not kim_df.empty and "followers" in kim_df.columns else None
         default = (
@@ -269,7 +337,9 @@ def main() -> None:
             followers_p99=p99,
             default_followers=default,
         )
-        print(f"\nProduction model retrained (followers feature). Hold-out MAE={metrics['mae']:.3f}")
+        print(f"\nProduction model retrained (followers + likes). Hold-out MAE={metrics['mae']:.3f}")
+        if metrics.get("likes_mae") is not None:
+            print(f"Likes prediction MAE={metrics['likes_mae']:.1f}  R²={metrics.get('likes_r2', 0):.3f}")
         return
 
     kim_path = Path(args.kim_csv)

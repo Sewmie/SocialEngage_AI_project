@@ -8,6 +8,7 @@ export type VisualAnalysis = {
 };
 
 export type EngagementPrediction = {
+  predicted_likes?: number | null;
   engagement_score: number;
   popularity_level: 'low' | 'medium' | 'high';
   factors: Record<string, number>;
@@ -15,6 +16,7 @@ export type EngagementPrediction = {
 
 export type RankedCaption = {
   caption: string;
+  predicted_likes?: number | null;
   engagement_score: number;
   popularity_level: 'low' | 'medium' | 'high';
   rank: number;
@@ -26,10 +28,13 @@ export type EngagementComparison = {
   baseline_label: string;
   baseline_caption: string;
   baseline_score: number;
+  baseline_likes?: number | null;
   optimized_label: string;
   optimized_caption: string;
   optimized_score: number;
+  optimized_likes?: number | null;
   score_delta: number;
+  likes_delta?: number | null;
 };
 
 export type MarketingExtras = {
