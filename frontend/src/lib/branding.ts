@@ -2,9 +2,9 @@ export const APP_NAME = 'SocialEngage AI';
 export const APP_TAGLINE = 'Instagram engagement prediction powered by multimodal ML';
 
 export const MODEL_STATS = {
-  r2: '0.68',
-  mae: '6.02',
-  dataset: '119',
+  r2: '0.08',
+  mae: '7.75',
+  dataset: '9,883',
   model: 'CLIP + Gradient Boosting',
 } as const;
 

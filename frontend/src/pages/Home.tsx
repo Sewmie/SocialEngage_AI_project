@@ -1,11 +1,29 @@
 import { useNavigate } from 'react-router-dom';
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppNav } from '../components/AppNav';
+import { fetchModelMetrics, isAnalyticsConfigured, type ModelMetrics } from '../lib/analyticsApi';
 import { APP_NAME, APP_TAGLINE, MODEL_STATS } from '../lib/branding';
 
 export default function Home() {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [modelMetrics, setModelMetrics] = useState<ModelMetrics | null>(null);
+
+  useEffect(() => {
+    if (!isAnalyticsConfigured()) return;
+    fetchModelMetrics()
+      .then(setModelMetrics)
+      .catch(() => {});
+  }, []);
+
+  const displayPosts =
+    modelMetrics?.n_dataset != null
+      ? modelMetrics.n_dataset.toLocaleString()
+      : modelMetrics?.n_train != null
+        ? modelMetrics.n_train.toLocaleString()
+        : MODEL_STATS.dataset;
+  const displayR2 =
+    modelMetrics?.r2 != null ? modelMetrics.r2.toFixed(2) : MODEL_STATS.r2;
 
   const onFile = (file: File) => {
     const url = URL.createObjectURL(file);
@@ -22,11 +40,11 @@ export default function Home() {
 
         <div className="hero__stats">
           <div className="stat-pill">
-            <span className="stat-pill__value">{MODEL_STATS.dataset}</span>
+            <span className="stat-pill__value">{displayPosts}</span>
             <span className="stat-pill__label">Posts trained</span>
           </div>
           <div className="stat-pill">
-            <span className="stat-pill__value">R² {MODEL_STATS.r2}</span>
+            <span className="stat-pill__value">R² {displayR2}</span>
             <span className="stat-pill__label">Model accuracy</span>
           </div>
           <div className="stat-pill">

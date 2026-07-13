@@ -33,6 +33,7 @@ export type ModelMetrics = {
   r2: number | null;
   n_train: number | null;
   n_test: number | null;
+  n_dataset?: number | null;
   clip_features: boolean | null;
 };
 
