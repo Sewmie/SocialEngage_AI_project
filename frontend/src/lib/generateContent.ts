@@ -6,6 +6,20 @@ import type { GeneratedContent } from './types';
 import { campaignGoalById } from './marketingGoals';
 import { generateContentClient } from './gemini';
 
+/** Dedupe in-flight calls (React Strict Mode mounts effects twice in dev). */
+const inflight = new Map<string, Promise<GeneratedContent>>();
+
+function requestKey(
+  imageUri: string,
+  filterName: string,
+  moodId: string,
+  brandId: string,
+  contentPath: ContentPath,
+  campaignGoalId?: string,
+): string {
+  return [imageUri, filterName, moodId, brandId, contentPath, campaignGoalId ?? ''].join('|');
+}
+
 export async function generateSocialContent(
   imageUri: string,
   filterName: string,
@@ -14,39 +28,56 @@ export async function generateSocialContent(
   contentPath: ContentPath = 'marketing',
   campaignGoalId?: string,
 ): Promise<GeneratedContent> {
-  if (isApiConfigured()) {
-    try {
-      const result = await generateContentViaApi(
-        imageUri,
-        filterName,
-        moodId,
-        brandId,
-        contentPath,
-        campaignGoalId,
-      );
-      return { ...result, content_path: contentPath };
-    } catch {
-      // fall through to client-side Gemini
-    }
+  const key = requestKey(imageUri, filterName, moodId, brandId, contentPath, campaignGoalId);
+  const existing = inflight.get(key);
+  if (existing) {
+    return existing;
   }
 
-  const mood = captionMoodById(moodId);
-  const brand = brandById(brandId);
-  const goal = campaignGoalById(campaignGoalId);
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const work = (async (): Promise<GeneratedContent> => {
+    if (isApiConfigured()) {
+      try {
+        const result = await generateContentViaApi(
+          imageUri,
+          filterName,
+          moodId,
+          brandId,
+          contentPath,
+          campaignGoalId,
+        );
+        return { ...result, content_path: contentPath };
+      } catch {
+        // fall through to client-side Gemini
+      }
+    }
 
-  const client = await generateContentClient({
-    imageUri,
-    filterLabel: filterName,
-    moodLabel: mood.label,
-    moodTone: mood.tone,
-    brandLabel: brand.label,
-    brandVoice: brand.voice,
-    apiKey,
-    contentPath,
-    campaignGoalLabel: goal.label,
-    campaignGoalPrompt: goal.prompt,
-  });
+    const mood = captionMoodById(moodId);
+    const brand = brandById(brandId);
+    const goal = campaignGoalById(campaignGoalId);
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
-  return { ...client, content_path: contentPath, source: 'client' };
+    const client = await generateContentClient({
+      imageUri,
+      filterLabel: filterName,
+      moodLabel: mood.label,
+      moodTone: mood.tone,
+      brandLabel: brand.label,
+      brandVoice: brand.voice,
+      apiKey,
+      contentPath,
+      campaignGoalLabel: goal.label,
+      campaignGoalPrompt: goal.prompt,
+    });
+
+    return { ...client, content_path: contentPath, source: 'client' };
+  })();
+
+  inflight.set(key, work);
+  try {
+    return await work;
+  } finally {
+    if (inflight.get(key) === work) {
+      inflight.delete(key);
+    }
+  }
 }
