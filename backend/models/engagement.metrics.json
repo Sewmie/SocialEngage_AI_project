@@ -1,10 +1,9 @@
 {
-  "mae": 7.754,
-  "rmse": 11.878,
-  "r2": 0.075,
+  "mae": 4.46,
+  "rmse": 7.782,
+  "r2": 0.603,
   "n_train": 7906,
   "n_test": 1977,
-  "n_dataset": 9883,
   "clip_features": true,
   "training_domain": "kim_www20"
 }

@@ -10,6 +10,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import math
 from pathlib import Path
 
 import pandas as pd
@@ -27,7 +28,60 @@ VALID_CATEGORIES = {
 }
 
 
-def clean_kim(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+def _resolve_influencers_path(explicit: str | None) -> Path | None:
+    if explicit:
+        path = Path(explicit)
+        return path if path.is_file() else None
+    candidates = [
+        Path("data/kim_raw/influencers.txt"),
+        Path(__file__).resolve().parents[4] / "fyp" / "backend" / "data" / "kim_raw" / "influencers.txt",
+    ]
+    for path in candidates:
+        if path.is_file():
+            return path
+    return None
+
+
+def load_follower_map(influencers_path: Path) -> dict[str, int]:
+    """username (lower) → follower count from Kim influencers.txt."""
+    mapping: dict[str, int] = {}
+    for raw in influencers_path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("=") or line.lower().startswith("username"):
+            continue
+        parts = line.split("\t") if "\t" in line else line.split(",")
+        if len(parts) < 3:
+            continue
+        username = parts[0].strip().lower()
+        try:
+            followers = int(str(parts[2]).replace(",", "").strip())
+        except ValueError:
+            continue
+        if username and followers > 0:
+            mapping[username] = followers
+    return mapping
+
+
+def attach_followers(df: pd.DataFrame, influencers_path: Path | None) -> pd.DataFrame:
+    if not influencers_path or not influencers_path.is_file():
+        print("Warning: influencers.txt not found — followers column will be empty")
+        df["followers"] = 0
+        return df
+
+    follower_map = load_follower_map(influencers_path)
+    if "username" not in df.columns:
+        df["followers"] = 0
+        return df
+
+    df["followers"] = (
+        df["username"].astype(str).str.strip().str.lower().map(follower_map).fillna(0).astype(int)
+    )
+    matched = int((df["followers"] > 0).sum())
+    print(f"Followers joined: {matched:,}/{len(df):,} posts ({matched / max(len(df), 1):.1%})")
+    return df
+
+
+def clean_kim(df: pd.DataFrame, influencers_path: Path | None = None) -> tuple[pd.DataFrame, dict]:
     report: dict[str, int] = {"input_rows": len(df)}
 
     df = df.copy()
@@ -57,14 +111,38 @@ def clean_kim(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     df.loc[~df["category"].isin(VALID_CATEGORIES), "category"] = "other"
 
     df["image_path"] = ""
+    df = attach_followers(df, influencers_path)
     report["output_rows"] = len(df)
     return df.reset_index(drop=True), report
+
+
+def followers_p99(df: pd.DataFrame) -> float:
+    if "followers" not in df.columns:
+        return 1.0
+    series = pd.to_numeric(df["followers"], errors="coerce").fillna(0)
+    positive = series[series > 0]
+    if positive.empty:
+        return 1.0
+    return float(positive.quantile(0.99)) or 1.0
+
+
+def normalize_followers(followers: float, p99: float, default: float = 0.0) -> float:
+    value = float(followers) if followers and followers > 0 else default
+    if value <= 0:
+        return 0.0
+    denom = math.log1p(max(p99, 1.0))
+    return round(min(1.0, math.log1p(value) / denom), 4)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Clean Kim Instagram CSV for training")
     parser.add_argument("--in", dest="in_path", default="data/instagram_kim.csv")
     parser.add_argument("--out", dest="out_path", default="data/instagram_kim_clean.csv")
+    parser.add_argument(
+        "--influencers",
+        default="",
+        help="Path to Kim influencers.txt (auto-detected if omitted)",
+    )
     args = parser.parse_args()
 
     in_path = Path(args.in_path)
@@ -72,8 +150,12 @@ def main() -> None:
     if not in_path.is_file():
         raise SystemExit(f"Input not found: {in_path}")
 
+    influencers_path = _resolve_influencers_path(args.influencers or None)
+    if influencers_path:
+        print(f"Influencers: {influencers_path}")
+
     df = pd.read_csv(in_path, encoding="latin-1")
-    cleaned, report = clean_kim(df)
+    cleaned, report = clean_kim(df, influencers_path)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     cleaned.to_csv(out_path, index=False)

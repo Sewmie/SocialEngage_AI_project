@@ -22,6 +22,7 @@ def generate_multimodal_content(
     gemini_api_key: str,
     content_path: str = "marketing",
     campaign_goal_id: str = "awareness",
+    follower_count: int | None = None,
 ) -> dict:
     visual = analyze_image(image_bytes)
 
@@ -43,6 +44,7 @@ def generate_multimodal_content(
         visual=visual,
         mood_id=mood_id,
         brand_id=brand_id,
+        follower_count=follower_count,
     )
     sorted_captions = [r["caption"] for r in ranked]
     best = ranked[0] if ranked else None
@@ -83,6 +85,7 @@ def generate_multimodal_content(
             visual=visual,
             mood_id=mood_id,
             brand_id=brand_id,
+            follower_count=follower_count,
         )
     )
     result["engagement_tips"] = build_engagement_tips(result["engagement"]["factors"])

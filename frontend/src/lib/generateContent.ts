@@ -16,8 +16,9 @@ function requestKey(
   brandId: string,
   contentPath: ContentPath,
   campaignGoalId?: string,
+  followerCount?: number,
 ): string {
-  return [imageUri, filterName, moodId, brandId, contentPath, campaignGoalId ?? ''].join('|');
+  return [imageUri, filterName, moodId, brandId, contentPath, campaignGoalId ?? '', followerCount ?? ''].join('|');
 }
 
 export async function generateSocialContent(
@@ -27,8 +28,17 @@ export async function generateSocialContent(
   brandId: string,
   contentPath: ContentPath = 'marketing',
   campaignGoalId?: string,
+  followerCount?: number,
 ): Promise<GeneratedContent> {
-  const key = requestKey(imageUri, filterName, moodId, brandId, contentPath, campaignGoalId);
+  const key = requestKey(
+    imageUri,
+    filterName,
+    moodId,
+    brandId,
+    contentPath,
+    campaignGoalId,
+    followerCount,
+  );
   const existing = inflight.get(key);
   if (existing) {
     return existing;
@@ -44,6 +54,7 @@ export async function generateSocialContent(
           brandId,
           contentPath,
           campaignGoalId,
+          followerCount,
         );
         return { ...result, content_path: contentPath };
       } catch {

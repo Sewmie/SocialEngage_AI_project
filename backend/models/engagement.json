@@ -7,22 +7,24 @@
     "scene_confidence",
     "sentiment_proxy",
     "brand_fit",
-    "mood_match"
+    "mood_match",
+    "log_followers_norm"
   ],
   "weights": [
-    -5.854226,
-    -2.121682,
-    3.302862,
-    -3.674312,
-    0.135318,
-    7.439776,
-    0.516654
+    -4.222695,
+    0.059232,
+    0.0,
+    0.0,
+    -0.672639,
+    0.0,
+    -0.0,
+    62.666744
   ],
-  "bias": 6.575002,
+  "bias": -36.692244,
   "metrics": {
-    "mae": 7.754,
-    "rmse": 11.878,
-    "r2": 0.075,
+    "mae": 4.46,
+    "rmse": 7.782,
+    "r2": 0.603,
     "n_train": 7906,
     "n_test": 1977,
     "clip_features": true,

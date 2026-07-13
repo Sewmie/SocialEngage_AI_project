@@ -25,6 +25,7 @@ export async function generateContentViaApi(
   brandId: string,
   contentPath: ContentPath = 'marketing',
   campaignGoalId?: string,
+  followerCount?: number,
 ): Promise<GeneratedContent> {
   const base = apiBase();
   if (!base) {
@@ -40,6 +41,9 @@ export async function generateContentViaApi(
   form.append('content_path', contentPath);
   if (campaignGoalId) {
     form.append('campaign_goal_id', campaignGoalId);
+  }
+  if (followerCount && followerCount > 0) {
+    form.append('follower_count', String(followerCount));
   }
 
   const res = await fetch(`${base}/api/content/generate`, {

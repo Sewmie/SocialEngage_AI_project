@@ -93,6 +93,21 @@
   height: 4px;
 }
 
+.slider-label .text-input,
+.text-input {
+  flex: 1;
+  max-width: 160px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.panel__hint {
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+
 /* ── Captions & results ───────────────────────────────────── */
 
 .captions-thumb {

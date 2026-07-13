@@ -12,10 +12,14 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import math
 import re
 from pathlib import Path
 
 import pandas as pd
+
+from clean_kim_dataset import followers_p99, normalize_followers
+from feature_columns import FEATURE_COLS, TARGET
 
 # Aliases → canonical name
 CAPTION_ALIASES = ["caption", "Caption", "text", "post_text", "description", "Post Caption"]
@@ -23,6 +27,7 @@ LIKES_ALIASES = ["likes", "Likes", "like_count", "num_likes", "Like Count"]
 COMMENTS_ALIASES = ["comments", "Comments", "comment_count", "num_comments", "Comment Count"]
 HASHTAGS_ALIASES = ["hashtags", "Hashtags", "tags", "hashtag_list"]
 HASHTAG_COUNT_ALIASES = ["hashtag_count", "num_hashtags", "hashtag_num"]
+FOLLOWERS_ALIASES = ["followers", "Followers", "#Followers", "follower_count", "num_followers"]
 
 
 def _pick_column(df: pd.DataFrame, aliases: list[str]) -> str | None:
@@ -108,6 +113,7 @@ def prepare(
     comments_col = _pick_column(df, COMMENTS_ALIASES)
     tags_col = _pick_column(df, HASHTAGS_ALIASES)
     count_col = _pick_column(df, HASHTAG_COUNT_ALIASES)
+    followers_col = _pick_column(df, FOLLOWERS_ALIASES)
 
     saves_col = _pick_column(df, ["saves", "Saves"])
     shares_col = _pick_column(df, ["shares", "Shares"])
@@ -142,6 +148,13 @@ def prepare(
         df[impressions_col].fillna(1).astype(float) if impressions_col else pd.Series([1.0] * len(df))
     )
     follows_series = df[follows_col].fillna(0).astype(float) if follows_col else pd.Series([0.0] * len(df))
+    if followers_col:
+        followers_series = pd.to_numeric(df[followers_col], errors="coerce").fillna(0).astype(float)
+    else:
+        followers_series = pd.Series([0.0] * len(df))
+
+    followers_p99_val = followers_p99(df if followers_col else pd.DataFrame({"followers": followers_series}))
+    default_followers = float(followers_series[followers_series > 0].median()) if (followers_series > 0).any() else 0.0
 
     er_series = (likes_series + comments_series + saves_series + shares_series) / impressions_series.clip(lower=1)
     p99 = {
@@ -210,6 +223,12 @@ def prepare(
         else:
             engagement_score = 50.0
 
+        log_followers_norm = normalize_followers(
+            float(followers_series.iloc[n]),
+            followers_p99_val,
+            default=default_followers,
+        )
+
         rows.append(
             {
                 "caption_length": round(caption_length, 4),
@@ -219,11 +238,15 @@ def prepare(
                 "sentiment_proxy": round(sentiment_proxy, 4),
                 "brand_fit": brand_fit,
                 "mood_match": mood_match,
+                "log_followers_norm": log_followers_norm,
                 "engagement_score": engagement_score,
             }
         )
 
-    return pd.DataFrame(rows)
+    out_df = pd.DataFrame(rows)
+    out_df.attrs["followers_p99"] = followers_p99_val
+    out_df.attrs["default_followers"] = default_followers
+    return out_df
 
 
 def main():

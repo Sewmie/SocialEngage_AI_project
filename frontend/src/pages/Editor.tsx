@@ -21,6 +21,7 @@ export default function Editor() {
   const [moodId, setMoodId] = useState('professional');
   const [brandId, setBrandId] = useState('local_sme');
   const [campaignGoalId, setCampaignGoalId] = useState('awareness');
+  const [followerCount, setFollowerCount] = useState('2500');
   const moods = contentPath === 'marketing' ? MARKETING_MOODS : LIFESTYLE_MOODS;
 
   const [aspectId, setAspectId] = useState(ASPECT_OPTIONS[1].id);
@@ -67,9 +68,10 @@ export default function Editor() {
       brandId,
       contentPath,
       campaignGoalId: contentPath === 'marketing' ? campaignGoalId : undefined,
+      followerCount: Math.max(0, parseInt(followerCount, 10) || 0),
     });
     navigate('/captions');
-  }, [imageUrl, aspect, crop, preset, navigate, moodId, brandId, contentPath, campaignGoalId]);
+  }, [imageUrl, aspect, crop, preset, navigate, moodId, brandId, contentPath, campaignGoalId, followerCount]);
 
   if (!imageUrl) {
     return (
@@ -242,6 +244,22 @@ export default function Editor() {
                 </section>
               </>
             )}
+
+            <section className="panel">
+              <h3 className="section-title">Account size</h3>
+              <p className="muted panel__hint">Follower count calibrates the engagement score to your audience.</p>
+              <label className="slider-label">
+                Followers
+                <input
+                  type="number"
+                  min={0}
+                  step={100}
+                  value={followerCount}
+                  onChange={(e) => setFollowerCount(e.target.value)}
+                  className="text-input"
+                />
+              </label>
+            </section>
 
             <div className="editor__actions">
               <button type="button" onClick={onDownload}>Download JPEG</button>

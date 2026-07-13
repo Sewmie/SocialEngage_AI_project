@@ -42,6 +42,7 @@ export default function Captions() {
           handoff.brandId,
           handoff.contentPath,
           handoff.campaignGoalId,
+          handoff.followerCount,
         );
         if (cancelled) return;
 

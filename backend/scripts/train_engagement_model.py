@@ -20,16 +20,7 @@ from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 
-FEATURE_COLS = [
-    "caption_length",
-    "hashtag_count",
-    "aesthetic_score",
-    "scene_confidence",
-    "sentiment_proxy",
-    "brand_fit",
-    "mood_match",
-]
-TARGET = "engagement_score"
+from feature_columns import FEATURE_COLS, TARGET
 
 
 def main():

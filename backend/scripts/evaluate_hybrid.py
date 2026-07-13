@@ -34,17 +34,9 @@ sys.path.insert(0, str(BACKEND_ROOT))
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from prepare_engagement_dataset import prepare  # noqa: E402
+from feature_columns import FEATURE_COLS, TARGET  # noqa: E402
+from clean_kim_dataset import followers_p99, normalize_followers  # noqa: E402
 
-FEATURE_COLS = [
-    "caption_length",
-    "hashtag_count",
-    "aesthetic_score",
-    "scene_confidence",
-    "sentiment_proxy",
-    "brand_fit",
-    "mood_match",
-]
-TARGET = "engagement_score"
 RANDOM_STATE = 42
 
 
@@ -149,7 +141,14 @@ def _transfer_eval(
     }
 
 
-def retrain_production_model(df_clip: pd.DataFrame, out_joblib: Path, out_json: Path) -> dict:
+def retrain_production_model(
+    df_clip: pd.DataFrame,
+    out_joblib: Path,
+    out_json: Path,
+    *,
+    followers_p99: float | None = None,
+    default_followers: float | None = None,
+) -> dict:
     clean = df_clip.dropna(subset=FEATURE_COLS + [TARGET])
     X = clean[FEATURE_COLS].values
     y = clean[TARGET].values
@@ -171,6 +170,10 @@ def retrain_production_model(df_clip: pd.DataFrame, out_joblib: Path, out_json: 
         "model": model,
         "feature_cols": FEATURE_COLS,
         "metrics": {**metrics, "clip_features": True, "training_domain": "kim_www20"},
+        "feature_stats": {
+            "followers_p99": followers_p99,
+            "default_followers": default_followers,
+        },
     }
     out_joblib.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(bundle, out_joblib)
@@ -197,8 +200,68 @@ def main() -> None:
     parser.add_argument("--test-size", type=float, default=0.2)
     parser.add_argument("--out-dir", default="models")
     parser.add_argument("--retrain", action="store_true")
+    parser.add_argument(
+        "--retrain-only",
+        action="store_true",
+        help="Retrain from data/training_features_kim.csv (add followers via --refresh-followers)",
+    )
+    parser.add_argument(
+        "--refresh-followers",
+        action="store_true",
+        help="Merge log_followers_norm into existing training_features_kim.csv from kim CSV",
+    )
     parser.add_argument("--image-col", default="image_path")
     args = parser.parse_args()
+
+    features_path = BACKEND_ROOT / "data" / "training_features_kim.csv"
+
+    if args.refresh_followers:
+        kim_path = Path(args.kim_csv)
+        if not kim_path.is_file():
+            raise SystemExit(f"Kim CSV not found: {kim_path}")
+        if not features_path.is_file():
+            raise SystemExit(f"Features file not found: {features_path}")
+
+        kim_df = pd.read_csv(kim_path, encoding="latin-1")
+        features_df = pd.read_csv(features_path)
+        if len(kim_df) != len(features_df):
+            raise SystemExit(
+                f"Row mismatch: kim={len(kim_df)} features={len(features_df)}. "
+                "Re-run full evaluate_hybrid --clip first."
+            )
+        p99 = followers_p99(kim_df)
+        default = float(pd.to_numeric(kim_df.get("followers", 0), errors="coerce").fillna(0).replace(0, pd.NA).dropna().median() or 0)
+        features_df["log_followers_norm"] = [
+            normalize_followers(float(f), p99, default=default)
+            for f in pd.to_numeric(kim_df.get("followers", 0), errors="coerce").fillna(0)
+        ]
+        features_df.to_csv(features_path, index=False)
+        print(f"Added log_followers_norm → {features_path} (p99={p99:,.0f}, default={default:,.0f})")
+        if not args.retrain_only:
+            return
+
+    if args.retrain_only:
+        if not features_path.is_file():
+            raise SystemExit(f"Missing {features_path}")
+        features_df = pd.read_csv(features_path)
+        if "log_followers_norm" not in features_df.columns:
+            raise SystemExit("Run with --refresh-followers first to add log_followers_norm")
+        kim_df = pd.read_csv(Path(args.kim_csv), encoding="latin-1") if Path(args.kim_csv).is_file() else pd.DataFrame()
+        p99 = followers_p99(kim_df) if not kim_df.empty and "followers" in kim_df.columns else None
+        default = (
+            float(pd.to_numeric(kim_df["followers"], errors="coerce").replace(0, pd.NA).dropna().median())
+            if not kim_df.empty and "followers" in kim_df.columns
+            else None
+        )
+        metrics = retrain_production_model(
+            features_df,
+            Path(args.out_dir) / "engagement.joblib",
+            Path(args.out_dir) / "engagement.json",
+            followers_p99=p99,
+            default_followers=default,
+        )
+        print(f"\nProduction model retrained (followers feature). Hold-out MAE={metrics['mae']:.3f}")
+        return
 
     kim_path = Path(args.kim_csv)
     transfer_path = Path(args.transfer_csv)
@@ -329,10 +392,18 @@ def main() -> None:
     print(f"\nReports:\n  {report_path}\n  {out_dir / 'kim_evaluation_table.csv'}\n  {out_dir / 'kharwal_transfer_table.csv'}")
 
     if args.retrain and args.clip:
+        p99 = followers_p99(kim_raw) if "followers" in kim_raw.columns else None
+        default = (
+            float(pd.to_numeric(kim_raw["followers"], errors="coerce").replace(0, pd.NA).dropna().median())
+            if "followers" in kim_raw.columns
+            else None
+        )
         metrics = retrain_production_model(
             kim_features,
             out_dir / "engagement.joblib",
             out_dir / "engagement.json",
+            followers_p99=p99,
+            default_followers=default,
         )
         print(f"\nProduction model retrained on Kim (n={len(kim_features)}). Hold-out MAE={metrics['mae']:.3f}")
 

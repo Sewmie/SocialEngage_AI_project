@@ -23,6 +23,7 @@ async def generate_content(
     brand_id: str = Form(default="casual_creator"),
     content_path: str = Form(default="marketing"),
     campaign_goal_id: str = Form(default="awareness"),
+    follower_count: int = Form(default=0),
 ):
     if not image.content_type or not image.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Upload must be an image file.")
@@ -41,6 +42,7 @@ async def generate_content(
             gemini_api_key=settings.gemini_api_key,
             content_path=content_path,
             campaign_goal_id=campaign_goal_id,
+            follower_count=follower_count if follower_count > 0 else None,
         )
         return result
     except ValueError as e:

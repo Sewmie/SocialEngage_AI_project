@@ -8,6 +8,7 @@ export type EditorHandoff = {
   brandId: string;
   contentPath: ContentPath;
   campaignGoalId?: string;
+  followerCount: number;
 };
 
 let session: EditorHandoff | null = null;
