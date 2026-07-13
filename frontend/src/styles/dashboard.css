@@ -243,3 +243,54 @@
 .level--high { background: rgba(46, 125, 50, 0.12); color: #2e7d32; }
 .level--medium { background: rgba(230, 81, 0, 0.12); color: #e65100; }
 .level--low { background: rgba(198, 40, 40, 0.12); color: #c62828; }
+
+.importance-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.importance-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 52px;
+  gap: 12px;
+  align-items: center;
+}
+
+@media (max-width: 720px) {
+  .importance-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+
+.importance-row__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.importance-row__track {
+  height: 10px;
+  border-radius: var(--radius-full);
+  background: var(--surface-muted);
+  overflow: hidden;
+}
+
+.importance-row__bar {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--gradient-brand);
+  min-width: 2px;
+}
+
+.importance-row__value {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-align: right;
+}

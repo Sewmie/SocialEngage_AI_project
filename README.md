@@ -7,7 +7,7 @@ Multimodal framework for social media content generation and engagement predicti
 | Phase | Feature |
 |-------|---------|
 | 1 | Vite + React frontend, FastAPI `/health` |
-| 2 | Image upload, crop, filters, export |
+| 2 | Image upload, crop, export |
 | 3 | Client-side Gemini captions (fallback) |
 | 4 | Multimodal API — CLIP + Gemini + ML engagement |
 | 5 | **Analytics dashboard** — prediction history + model metrics |
@@ -42,7 +42,7 @@ Open http://localhost:5173
 | Path | Description |
 |------|-------------|
 | `/` | Upload & start analysis |
-| `/editor` | Crop, filter, brand/mood config |
+| `/editor` | Crop, brand/mood config |
 | `/captions` | Generated content + engagement score |
 | `/dashboard` | Analytics — live logs + R²/MAE metrics |
 

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import math
 import os
+import re
 from pathlib import Path
 
 import numpy as np
@@ -34,6 +36,17 @@ DEFAULT_WEIGHTS = {
 
 DEFAULT_FOLLOWERS_P99 = 500_000.0
 DEFAULT_FOLLOWERS = 10_000.0
+
+FEATURE_LABELS = {
+    "caption_length": "Caption length",
+    "hashtag_count": "Hashtags",
+    "aesthetic_score": "Aesthetic",
+    "scene_confidence": "Scene match",
+    "sentiment_proxy": "Sentiment",
+    "brand_fit": "Brand fit",
+    "mood_match": "Mood alignment",
+    "log_followers_norm": "Follower reach",
+}
 
 
 def _sentiment_proxy(captions: list[str]) -> float:
@@ -306,3 +319,78 @@ def predict_engagement(
         "popularity_level": _level_from_score(score),
         "factors": factors,
     }
+
+
+def _extract_hashtags(text: str) -> list[str]:
+    return re.findall(r"#[\w]+", text)
+
+
+def _models_dir() -> Path:
+    return Path(__file__).resolve().parents[2] / "models"
+
+
+def get_feature_importances() -> dict[str, float] | None:
+    """GBR feature importances from the production model or evaluation report."""
+    bundle = _load_model()
+    if isinstance(bundle, dict) and "model" in bundle:
+        model = bundle["model"]
+        cols = _model_feature_cols(bundle)
+        if hasattr(model, "feature_importances_"):
+            return {
+                col: round(float(val), 4)
+                for col, val in zip(cols, model.feature_importances_, strict=False)
+            }
+
+    models_dir = _models_dir()
+    for name in ("engagement.metrics.json", "hybrid_evaluation_report.json"):
+        path = models_dir / name
+        if not path.is_file():
+            continue
+        data = json.loads(path.read_text())
+        raw = data.get("feature_importances_gbr")
+        if isinstance(raw, dict) and raw:
+            return {str(k): round(float(v), 4) for k, v in raw.items()}
+    return None
+
+
+def score_user_caption(
+    caption: str,
+    visual: dict,
+    mood_id: str,
+    brand_id: str,
+    follower_count: int | None = None,
+    *,
+    best_caption: str | None = None,
+    best_score: float | None = None,
+) -> dict:
+    """Score a user-provided caption against the trained engagement model."""
+    text = caption.strip()
+    if not text:
+        raise ValueError("Caption cannot be empty.")
+
+    hashtags = _extract_hashtags(text)
+    model_bundle = _load_model()
+    features, factors = _build_features(
+        [text], hashtags, visual, mood_id, brand_id, follower_count, model_bundle
+    )
+    score = round(_score_features(features, model_bundle), 1)
+
+    result: dict = {
+        "caption": text,
+        "hashtags_detected": hashtags,
+        "engagement": {
+            "engagement_score": score,
+            "popularity_level": _level_from_score(score),
+            "factors": factors,
+        },
+        "engagement_tips": build_engagement_tips(factors),
+    }
+
+    if best_score is not None:
+        result["vs_best"] = {
+            "best_caption": best_caption or "",
+            "best_score": round(float(best_score), 1),
+            "score_delta": round(float(best_score) - score, 1),
+        }
+
+    return result

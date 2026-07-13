@@ -32,6 +32,32 @@ function levelClass(level: string): string {
   return 'level level--low';
 }
 
+const DEFAULT_FEATURE_LABELS: Record<string, string> = {
+  caption_length: 'Caption length',
+  hashtag_count: 'Hashtags',
+  aesthetic_score: 'Aesthetic',
+  scene_confidence: 'Scene match',
+  sentiment_proxy: 'Sentiment',
+  brand_fit: 'Brand fit',
+  mood_match: 'Mood alignment',
+  log_followers_norm: 'Follower reach',
+};
+
+function featureImportanceRows(
+  importances: Record<string, number> | null | undefined,
+  labels: Record<string, string> | null | undefined,
+) {
+  if (!importances) return [];
+  const labelMap = { ...DEFAULT_FEATURE_LABELS, ...labels };
+  return Object.entries(importances)
+    .map(([key, value]) => ({
+      key,
+      label: labelMap[key] ?? key,
+      value: Math.max(0, value),
+    }))
+    .sort((a, b) => b.value - a.value);
+}
+
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +98,11 @@ export default function Dashboard() {
   const displayMae = modelMetrics?.mae != null ? modelMetrics.mae.toFixed(2) : MODEL_STATS.mae;
   const displayTrain = modelMetrics?.n_train ?? MODEL_STATS.dataset;
   const displayTest = modelMetrics?.n_test ?? '24';
+  const importanceRows = featureImportanceRows(
+    modelMetrics?.feature_importances_gbr,
+    modelMetrics?.feature_labels,
+  );
+  const maxImportance = importanceRows[0]?.value ?? 1;
 
   return (
     <>
@@ -141,6 +172,31 @@ export default function Dashboard() {
                 </strong>
               </div>
             </section>
+
+            {importanceRows.length > 0 && (
+              <section className="dashboard__section">
+                <div className="dashboard__section-head">
+                  <h2>Feature importance</h2>
+                  <p className="muted">
+                    What the Gradient Boosting model learned from 9,883 Kim posts (held-out GBR)
+                  </p>
+                </div>
+                <div className="importance-chart">
+                  {importanceRows.map((row) => (
+                    <div key={row.key} className="importance-row">
+                      <span className="importance-row__label">{row.label}</span>
+                      <div className="importance-row__track" aria-hidden>
+                        <div
+                          className="importance-row__bar"
+                          style={{ width: `${Math.max(2, (row.value / maxImportance) * 100)}%` }}
+                        />
+                      </div>
+                      <span className="importance-row__value">{(row.value * 100).toFixed(1)}%</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             <section className="dashboard__section">
               <h2>Pipeline modules</h2>

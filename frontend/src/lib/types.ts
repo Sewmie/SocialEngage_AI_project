@@ -50,3 +50,18 @@ export type GeneratedContent = {
   content_path?: ContentPath;
   source: 'api' | 'client';
 };
+
+export type CaptionVsBest = {
+  best_caption: string;
+  best_score: number;
+  score_delta: number;
+};
+
+export type CaptionScoreResult = {
+  caption: string;
+  hashtags_detected: string[];
+  visual_analysis: VisualAnalysis;
+  engagement: EngagementPrediction;
+  engagement_tips: string[];
+  vs_best?: CaptionVsBest | null;
+};

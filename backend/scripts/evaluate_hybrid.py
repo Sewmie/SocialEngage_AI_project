@@ -165,11 +165,20 @@ def retrain_production_model(
     model.fit(X_train, y_train)
     pred = np.clip(model.predict(X_test), 0, 100)
     metrics = {**_metrics(y_test, pred), "n_train": len(X_train), "n_test": len(X_test)}
+    importances = {
+        col: round(float(val), 4)
+        for col, val in zip(FEATURE_COLS, model.feature_importances_, strict=False)
+    }
 
     bundle = {
         "model": model,
         "feature_cols": FEATURE_COLS,
-        "metrics": {**metrics, "clip_features": True, "training_domain": "kim_www20"},
+        "metrics": {
+            **metrics,
+            "clip_features": True,
+            "training_domain": "kim_www20",
+            "feature_importances_gbr": importances,
+        },
         "feature_stats": {
             "followers_p99": followers_p99,
             "default_followers": default_followers,

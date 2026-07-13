@@ -11,19 +11,17 @@ const inflight = new Map<string, Promise<GeneratedContent>>();
 
 function requestKey(
   imageUri: string,
-  filterName: string,
   moodId: string,
   brandId: string,
   contentPath: ContentPath,
   campaignGoalId?: string,
   followerCount?: number,
 ): string {
-  return [imageUri, filterName, moodId, brandId, contentPath, campaignGoalId ?? '', followerCount ?? ''].join('|');
+  return [imageUri, moodId, brandId, contentPath, campaignGoalId ?? '', followerCount ?? ''].join('|');
 }
 
 export async function generateSocialContent(
   imageUri: string,
-  filterName: string,
   moodId: string,
   brandId: string,
   contentPath: ContentPath = 'marketing',
@@ -32,7 +30,6 @@ export async function generateSocialContent(
 ): Promise<GeneratedContent> {
   const key = requestKey(
     imageUri,
-    filterName,
     moodId,
     brandId,
     contentPath,
@@ -49,7 +46,6 @@ export async function generateSocialContent(
       try {
         const result = await generateContentViaApi(
           imageUri,
-          filterName,
           moodId,
           brandId,
           contentPath,
@@ -69,7 +65,6 @@ export async function generateSocialContent(
 
     const client = await generateContentClient({
       imageUri,
-      filterLabel: filterName,
       moodLabel: mood.label,
       moodTone: mood.tone,
       brandLabel: brand.label,

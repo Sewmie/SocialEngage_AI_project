@@ -42,7 +42,7 @@ async function makeModelSizedCopy(uri: string): Promise<string> {
 
 const MARKETING_PROMPT = `You are an expert social media marketing strategist for Instagram.
 
-Filter: "{{FILTER}}" · Tone: "{{MOOD_LABEL}}" ({{MOOD_TONE}})
+Tone: "{{MOOD_LABEL}}" ({{MOOD_TONE}})
 Brand: {{BRAND_LABEL}} — {{BRAND_VOICE}}
 Campaign goal: {{CAMPAIGN_GOAL}} — {{CAMPAIGN_PROMPT}}
 
@@ -66,7 +66,7 @@ Rules:
 
 const CASUAL_PROMPT = `You write casual Instagram captions for personal everyday posts (NOT corporate marketing).
 
-Filter: "{{FILTER}}" · Mood: "{{MOOD_LABEL}}" ({{MOOD_TONE}})
+Mood: "{{MOOD_LABEL}}" ({{MOOD_TONE}})
 
 Look at this image. Return ONLY valid JSON:
 {
@@ -158,7 +158,6 @@ function parseContentJson(
 
 export type GenerateContentClientOptions = {
   imageUri: string;
-  filterLabel: string;
   moodLabel: string;
   moodTone: string;
   brandLabel: string;
@@ -174,7 +173,6 @@ export async function generateContentClient(
 ): Promise<Omit<import('./types').GeneratedContent, 'source'>> {
   const {
     imageUri,
-    filterLabel,
     moodLabel,
     moodTone,
     brandLabel,
@@ -202,7 +200,6 @@ export async function generateContentClient(
   const genAI = new GoogleGenerativeAI(apiKey.trim());
   const template = contentPath === 'marketing' ? MARKETING_PROMPT : CASUAL_PROMPT;
   const prompt = template
-    .replace('{{FILTER}}', filterLabel)
     .replace('{{MOOD_LABEL}}', moodLabel)
     .replace('{{MOOD_TONE}}', moodTone)
     .replace('{{BRAND_LABEL}}', brandLabel)
@@ -257,14 +254,12 @@ export async function generateContentClient(
 /** @deprecated Use generateContentClient or generateSocialContent */
 export async function generateTenCaptions(
   imageUri: string,
-  filterLabel: string,
   apiKey: string | undefined,
   moodId?: string,
 ): Promise<string[]> {
   const mood = captionMoodById(moodId);
   const out = await generateContentClient({
     imageUri,
-    filterLabel,
     moodLabel: mood.label,
     moodTone: mood.tone,
     brandLabel: 'Casual creator',

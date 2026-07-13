@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { loadEditorHandoff, clearEditorHandoff } from '../lib/editorSession';
 import { generateSocialContent } from '../lib/generateContent';
+import { scoreCaptionViaApi, isApiConfigured } from '../lib/contentApi';
 import { formatGeminiError } from '../lib/geminiModels';
 import { captionMoodById } from '../lib/captionMoods';
 import { brandById } from '../lib/brandProfiles';
-import type { EngagementComparison, RankedCaption, VisualAnalysis } from '../lib/types';
+import type { CaptionScoreResult, EngagementComparison, RankedCaption, VisualAnalysis } from '../lib/types';
 import { AppNav } from '../components/AppNav';
 
 export default function Captions() {
@@ -24,6 +25,10 @@ export default function Captions() {
   const [hooks, setHooks] = useState<string[]>([]);
   const [ctas, setCtas] = useState<string[]>([]);
   const [marketingTips, setMarketingTips] = useState<string[]>([]);
+  const [customCaption, setCustomCaption] = useState('');
+  const [scoring, setScoring] = useState(false);
+  const [scoreError, setScoreError] = useState<string | null>(null);
+  const [customScore, setCustomScore] = useState<CaptionScoreResult | null>(null);
 
   useEffect(() => {
     if (!handoff) {
@@ -37,7 +42,6 @@ export default function Captions() {
       try {
         const result = await generateSocialContent(
           handoff.imageBlobUrl,
-          handoff.filterName,
           handoff.moodId,
           handoff.brandId,
           handoff.contentPath,
@@ -70,6 +74,34 @@ export default function Captions() {
 
   const copy = async (text: string) => {
     await navigator.clipboard.writeText(text);
+  };
+
+  const scoreMyCaption = async () => {
+    if (!handoff || !customCaption.trim()) return;
+    if (!isApiConfigured()) {
+      setScoreError('Backend API required to score captions.');
+      return;
+    }
+
+    setScoring(true);
+    setScoreError(null);
+    try {
+      const best = ranked[0];
+      const result = await scoreCaptionViaApi(
+        handoff.imageBlobUrl,
+        customCaption,
+        handoff.moodId,
+        handoff.brandId,
+        handoff.followerCount,
+        best?.caption,
+        best?.engagement_score,
+      );
+      setCustomScore(result);
+    } catch (e) {
+      setScoreError(e instanceof Error ? e.message : 'Scoring failed');
+    } finally {
+      setScoring(false);
+    }
   };
 
   if (!handoff && !loading) {
@@ -184,6 +216,64 @@ export default function Captions() {
                 <button type="button" className="btn-copy" onClick={() => copy(item.caption)}>Copy</button>
               </div>
             ))}
+          </section>
+        )}
+
+        {!loading && source === 'api' && handoff && (
+          <section className="score-my-caption">
+            <h3 className="section-title">Score my caption</h3>
+            <p className="muted">
+              Paste your own draft — the ML model scores it with the same features as the ranked captions.
+            </p>
+            <textarea
+              className="score-my-caption__input"
+              rows={4}
+              placeholder="Write or paste your caption here…"
+              value={customCaption}
+              onChange={(e) => setCustomCaption(e.target.value)}
+            />
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={scoreMyCaption}
+              disabled={scoring || !customCaption.trim()}
+            >
+              {scoring ? 'Scoring…' : 'Score with ML model'}
+            </button>
+            {scoreError && <p className="error">{scoreError}</p>}
+            {customScore && (
+              <div className="score-my-caption__result">
+                <div className="score-box score-box--compact">
+                  <div className="score-box__ring">
+                    <span className="score-box__value">{Math.round(customScore.engagement.engagement_score)}</span>
+                  </div>
+                  <div className="score-box__label">
+                    <strong>Your caption score</strong>
+                    {customScore.engagement.popularity_level} · out of 100
+                  </div>
+                </div>
+                {customScore.vs_best && (
+                  <p className="score-my-caption__delta">
+                    vs ML-recommended ({Math.round(customScore.vs_best.best_score)}/100):{' '}
+                    <strong>
+                      {customScore.vs_best.score_delta >= 0
+                        ? `+${customScore.vs_best.score_delta}`
+                        : customScore.vs_best.score_delta}
+                    </strong>{' '}
+                    {customScore.vs_best.score_delta > 0
+                      ? 'points below the top-ranked caption'
+                      : customScore.vs_best.score_delta < 0
+                        ? 'points above the top-ranked caption'
+                        : '— same as top-ranked'}
+                  </p>
+                )}
+                {customScore.engagement_tips.length > 0 && (
+                  <ul className="tips-list">
+                    {customScore.engagement_tips.map((t) => <li key={t}>{t}</li>)}
+                  </ul>
+                )}
+              </div>
+            )}
           </section>
         )}
 

@@ -7,6 +7,7 @@ from app.models.engagement_predictor import (
     build_engagement_tips,
     predict_engagement,
     rank_captions_by_engagement,
+    score_user_caption,
 )
 from app.db.analytics import log_prediction
 from app.models.image_analyzer import analyze_image
@@ -16,7 +17,6 @@ from app.models.nlp_module import generate_text_content
 def generate_multimodal_content(
     image_bytes: bytes,
     mime_type: str,
-    filter_name: str,
     mood_id: str,
     brand_id: str,
     gemini_api_key: str,
@@ -30,7 +30,6 @@ def generate_multimodal_content(
         image_bytes=image_bytes,
         mime_type=mime_type,
         visual=visual,
-        filter_name=filter_name,
         mood_id=mood_id,
         brand_id=brand_id,
         api_key=gemini_api_key,
@@ -61,7 +60,6 @@ def generate_multimodal_content(
         },
         "brand_id": brand_id,
         "mood_id": mood_id,
-        "filter_name": filter_name,
         "content_path": content_path,
     }
 
@@ -98,7 +96,6 @@ def generate_multimodal_content(
             mood_id=mood_id,
             content_path=content_path,
             campaign_goal_id=campaign_goal_id if content_path == "marketing" else None,
-            filter_name=filter_name,
             top_caption=best["caption"] if best else "",
             top_score=result["engagement"]["engagement_score"],
             popularity_level=result["engagement"]["popularity_level"],
@@ -111,3 +108,32 @@ def generate_multimodal_content(
         pass  # logging must not break generation
 
     return result
+
+
+def score_caption_for_image(
+    image_bytes: bytes,
+    caption: str,
+    mood_id: str,
+    brand_id: str,
+    follower_count: int | None = None,
+    *,
+    best_caption: str | None = None,
+    best_score: float | None = None,
+) -> dict:
+    visual = analyze_image(image_bytes)
+    scored = score_user_caption(
+        caption=caption,
+        visual=visual,
+        mood_id=mood_id,
+        brand_id=brand_id,
+        follower_count=follower_count,
+        best_caption=best_caption,
+        best_score=best_score,
+    )
+    scored["visual_analysis"] = {
+        "scene_labels": visual["scene_labels"],
+        "dominant_mood": visual["dominant_mood"],
+        "aesthetic_score": visual["aesthetic_score"],
+        "objects_detected": visual["objects_detected"],
+    }
+    return scored

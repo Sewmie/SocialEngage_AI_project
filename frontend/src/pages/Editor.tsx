@@ -1,7 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { aspectById, ASPECT_OPTIONS } from '../lib/aspectOptions';
-import { FILTER_PRESETS, presetById } from '../lib/filterPresets';
 import { renderEditedImage, downloadBlobUrl, type CropState } from '../lib/imageCanvas';
 import { saveEditorHandoff } from '../lib/editorSession';
 import { AppNav } from '../components/AppNav';
@@ -25,13 +24,11 @@ export default function Editor() {
   const moods = contentPath === 'marketing' ? MARKETING_MOODS : LIFESTYLE_MOODS;
 
   const [aspectId, setAspectId] = useState(ASPECT_OPTIONS[1].id);
-  const [filterId, setFilterId] = useState(FILTER_PRESETS[0].id);
   const [crop, setCrop] = useState<CropState>({ panX: 0, panY: 0, zoom: 1 });
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const aspect = useMemo(() => aspectById(aspectId), [aspectId]);
-  const preset = useMemo(() => presetById(filterId), [filterId]);
 
   // Debounced preview render
   useEffect(() => {
@@ -39,7 +36,7 @@ export default function Editor() {
     const t = setTimeout(async () => {
       setBusy(true);
       try {
-        const url = await renderEditedImage(imageUrl, aspect.w, aspect.h, crop, preset, 720);
+        const url = await renderEditedImage(imageUrl, aspect.w, aspect.h, crop, 720);
         setPreviewUrl((prev) => {
           if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev);
           return url;
@@ -49,20 +46,19 @@ export default function Editor() {
       }
     }, 300);
     return () => clearTimeout(t);
-  }, [imageUrl, aspect, crop, preset]);
+  }, [imageUrl, aspect, crop]);
 
   const onDownload = useCallback(async () => {
     if (!imageUrl) return;
-    const url = await renderEditedImage(imageUrl, aspect.w, aspect.h, crop, preset, 1080);
+    const url = await renderEditedImage(imageUrl, aspect.w, aspect.h, crop, 1080);
     downloadBlobUrl(url);
-  }, [imageUrl, aspect, crop, preset]);
+  }, [imageUrl, aspect, crop]);
 
   const onContinue = useCallback(async () => {
     if (!imageUrl) return;
-    const url = await renderEditedImage(imageUrl, aspect.w, aspect.h, crop, preset, 1080);
+    const url = await renderEditedImage(imageUrl, aspect.w, aspect.h, crop, 1080);
     saveEditorHandoff({
       imageBlobUrl: url,
-      filterName: preset.name,
       aspectLabel: aspect.label,
       moodId,
       brandId,
@@ -71,7 +67,7 @@ export default function Editor() {
       followerCount: Math.max(0, parseInt(followerCount, 10) || 0),
     });
     navigate('/captions');
-  }, [imageUrl, aspect, crop, preset, navigate, moodId, brandId, contentPath, campaignGoalId, followerCount]);
+  }, [imageUrl, aspect, crop, navigate, moodId, brandId, contentPath, campaignGoalId, followerCount]);
 
   if (!imageUrl) {
     return (
@@ -148,22 +144,6 @@ export default function Editor() {
                     onChange={(e) => setCrop((c) => ({ ...c, panY: Number(e.target.value) }))} />
                   <span>{crop.panY.toFixed(2)}</span>
                 </label>
-              </div>
-            </section>
-
-            <section className="panel">
-              <h3 className="section-title">Filter</h3>
-              <div className="chip-row">
-                {FILTER_PRESETS.map((f) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    className={f.id === filterId ? 'chip chip--active' : 'chip'}
-                    onClick={() => setFilterId(f.id)}
-                  >
-                    {f.name}
-                  </button>
-                ))}
               </div>
             </section>
 

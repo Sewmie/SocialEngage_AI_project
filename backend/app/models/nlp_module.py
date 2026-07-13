@@ -68,7 +68,6 @@ def _parse_result(raw: str, content_path: str) -> dict:
 
 def _build_prompt(
     visual: dict,
-    filter_name: str,
     mood_id: str,
     brand_id: str,
     content_path: str = "marketing",
@@ -90,7 +89,7 @@ def _build_prompt(
         return f"""You write casual Instagram captions for personal posts (NOT corporate marketing).
 
 {visual_block}
-Filter: "{filter_name}" · Mood: "{mood_id}" ({mood_tone})
+Mood: "{mood_id}" ({mood_tone})
 
 Return ONLY valid JSON:
 {{
@@ -110,7 +109,6 @@ Rules:
 {visual_block}
 
 MARKETING CONTEXT:
-- Filter: "{filter_name}"
 - Content tone: "{mood_id}" ({mood_tone})
 - Brand: {brand["label"]} — {brand["voice"]}
 - Campaign goal: {campaign_goal_id} — {goal}
@@ -140,7 +138,6 @@ def generate_text_content(
     image_bytes: bytes,
     mime_type: str,
     visual: dict,
-    filter_name: str,
     mood_id: str,
     brand_id: str,
     api_key: str,
@@ -152,7 +149,7 @@ def generate_text_content(
 
     genai.configure(api_key=api_key.strip())
     prompt = _build_prompt(
-        visual, filter_name, mood_id, brand_id, content_path, campaign_goal_id
+        visual, mood_id, brand_id, content_path, campaign_goal_id
     )
 
     models = ["gemini-2.5-flash", "gemini-3.5-flash", "gemini-3-flash-preview"]

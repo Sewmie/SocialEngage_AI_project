@@ -1,5 +1,3 @@
-import type { FilterPreset } from './filterPresets';
-
 export type CropState = {
   panX: number;   // -1 … 1
   panY: number;
@@ -42,13 +40,12 @@ export function computeCropRect(
   return { x: ox, y: oy, width: cw, height: ch };
 }
 
-/** Render cropped + filtered image to canvas → Blob URL */
+/** Render cropped image to canvas → Blob URL */
 export async function renderEditedImage(
   imageSrc: string,
   aspectW: number,
   aspectH: number,
   crop: CropState,
-  preset: FilterPreset,
   outputShortSide = 1080,
 ): Promise<string> {
   const img = await loadImage(imageSrc);
@@ -65,24 +62,6 @@ export async function renderEditedImage(
   const ctx = canvas.getContext('2d')!;
 
   ctx.drawImage(img, rect.x, rect.y, rect.width, rect.height, 0, 0, canvas.width, canvas.height);
-
-  // Color overlay (same logic as fyp filterPresets)
-  if (preset.overlay !== 'transparent') {
-    ctx.fillStyle = preset.overlay;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
-
-  // Simple vignette via radial gradient
-  if (preset.vignette) {
-    const g = ctx.createRadialGradient(
-      canvas.width / 2, canvas.height / 2, canvas.width * 0.2,
-      canvas.width / 2, canvas.height / 2, canvas.width * 0.75,
-    );
-    g.addColorStop(0, 'rgba(0,0,0,0)');
-    g.addColorStop(1, 'rgba(0,0,0,0.35)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(

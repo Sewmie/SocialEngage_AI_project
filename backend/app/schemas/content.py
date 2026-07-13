@@ -52,5 +52,19 @@ class ContentGenerateResponse(BaseModel):
     marketing: MarketingExtras | None = None
     brand_id: str
     mood_id: str
-    filter_name: str
     content_path: str = "marketing"
+
+
+class CaptionVsBest(BaseModel):
+    best_caption: str = ""
+    best_score: float = Field(ge=0, le=100)
+    score_delta: float
+
+
+class CaptionScoreResponse(BaseModel):
+    caption: str
+    hashtags_detected: list[str] = Field(default_factory=list)
+    visual_analysis: VisualAnalysis
+    engagement: EngagementPrediction
+    engagement_tips: list[str] = Field(default_factory=list)
+    vs_best: CaptionVsBest | None = None

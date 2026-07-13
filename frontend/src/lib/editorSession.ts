@@ -2,7 +2,6 @@ import type { ContentPath } from './contentPath';
 
 export type EditorHandoff = {
   imageBlobUrl: string;
-  filterName: string;
   aspectLabel: string;
   moodId: string;
   brandId: string;
