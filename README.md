@@ -7,7 +7,7 @@ Multimodal framework for social media content generation and engagement predicti
 | Phase | Feature |
 |-------|---------|
 | 1 | Vite + React frontend, FastAPI `/health` |
-| 2 | Image upload, crop, export |
+| 2 | Image upload, crop |
 | 3 | Client-side Gemini captions (fallback) |
 | 4 | Multimodal API — CLIP + Gemini + ML engagement |
 | 5 | **Analytics dashboard** — prediction history + model metrics |

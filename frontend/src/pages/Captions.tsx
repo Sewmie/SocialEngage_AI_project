@@ -30,6 +30,9 @@ function PredictionSummary({ engagement, label }: { engagement: EngagementPredic
       <div className="prediction-trio__item">
         <span className="prediction-trio__label">Engagement score</span>
         <strong className="prediction-trio__value">{Math.round(engagement.engagement_score)}/100</strong>
+        <span className="prediction-trio__score-hint muted">
+          vs top influencer posts — moderate scores are normal
+        </span>
       </div>
       <div className="prediction-trio__item">
         <span className="prediction-trio__label">Popularity</span>
@@ -88,7 +91,12 @@ export default function Captions() {
         setRanked(result.ranked_captions ?? []);
         setHashtags(result.hashtags);
         setScore(result.engagement?.engagement_score ?? null);
-        setPredictedLikes(result.engagement?.predicted_likes ?? null);
+        setPredictedLikes(
+          result.engagement?.predicted_likes
+          ?? (typeof result.engagement?.factors?.predicted_likes === 'number'
+            ? result.engagement.factors.predicted_likes
+            : null),
+        );
         setPopularityLevel(result.engagement?.popularity_level ?? null);
         setTips(result.engagement_tips ?? []);
         setComparison(result.engagement_comparison ?? null);

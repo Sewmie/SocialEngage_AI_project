@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { aspectById, ASPECT_OPTIONS } from '../lib/aspectOptions';
-import { renderEditedImage, downloadBlobUrl, type CropState } from '../lib/imageCanvas';
+import { renderEditedImage, type CropState } from '../lib/imageCanvas';
 import { saveEditorHandoff } from '../lib/editorSession';
 import { AppNav } from '../components/AppNav';
 import { MARKETING_MOODS, LIFESTYLE_MOODS } from '../lib/captionMoods';
@@ -46,12 +46,6 @@ export default function Editor() {
       }
     }, 300);
     return () => clearTimeout(t);
-  }, [imageUrl, aspect, crop]);
-
-  const onDownload = useCallback(async () => {
-    if (!imageUrl) return;
-    const url = await renderEditedImage(imageUrl, aspect.w, aspect.h, crop, 1080);
-    downloadBlobUrl(url);
   }, [imageUrl, aspect, crop]);
 
   const onContinue = useCallback(async () => {
@@ -242,7 +236,6 @@ export default function Editor() {
             </section>
 
             <div className="editor__actions">
-              <button type="button" onClick={onDownload}>Download JPEG</button>
               <button type="button" className="primary" onClick={onContinue} disabled={busy}>
                 Continue to captions →
               </button>

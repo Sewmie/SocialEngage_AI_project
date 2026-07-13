@@ -72,6 +72,7 @@ def generate_multimodal_content(
 
     result["engagement"] = (
         {
+            "predicted_likes": best.get("predicted_likes"),
             "engagement_score": best["engagement_score"],
             "popularity_level": best["popularity_level"],
             "factors": best["factors"],
