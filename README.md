@@ -18,6 +18,8 @@ Full project documentation: see `[fyp/docs/PROJECT.md](../../fyp/docs/PROJECT.md
 | 5     | Analytics dashboard — prediction history + model metrics |
 | 6     | Kim dataset training, follower feature, dual likes model |
 | 7     | Score my caption, feature importance                     |
+| 8–9   | Dual likes model, UI prediction trio                     |
+| **10** | **UI polish — drag crop, Captions hierarchy, pipeline loading** |
 
 
 ---
