@@ -2,24 +2,22 @@
 
 Multimodal framework for Instagram content generation and **engagement prediction** — predicts **likes**, **engagement score (0–100)**, and **popularity level** using a Kim-trained Gradient Boosting model.
 
-Full project documentation: see `[fyp/docs/PROJECT.md](../../fyp/docs/PROJECT.md)` (architecture, training, dissertation links).
-
 ---
 
 ## Phases
 
 
-| Phase | Feature                                                  |
-| ----- | -------------------------------------------------------- |
-| 1     | Vite + React frontend, FastAPI `/health`                 |
-| 2     | Image upload, crop, editor                               |
-| 3     | Client-side Gemini captions (fallback)                   |
-| 4     | Multimodal API — CLIP + Gemini + ML ranking              |
-| 5     | Analytics dashboard — prediction history + model metrics |
-| 6     | Kim dataset training, follower feature, dual likes model |
-| 7     | Score my caption, feature importance                     |
-| 8–9   | Dual likes model, UI prediction trio                     |
-| **10** | **UI polish — drag crop, Captions hierarchy, pipeline loading** |
+| Phase | Feature                                                     |
+| ----- | ----------------------------------------------------------- |
+| 1     | Vite + React frontend, FastAPI `/health`                    |
+| 2     | Image upload, crop, editor                                  |
+| 3     | Client-side Gemini captions (fallback)                      |
+| 4     | Multimodal API — CLIP + Gemini + ML ranking                 |
+| 5     | Analytics dashboard — prediction history + model metrics    |
+| 6     | Kim dataset training, follower feature, dual likes model    |
+| 7     | Score my caption, feature importance                        |
+| 8–9   | Dual likes model, UI prediction trio                        |
+| 10    | UI polish — drag crop, Captions hierarchy, pipeline loading |
 
 
 ---
@@ -109,17 +107,5 @@ Predictions log to `backend/data/analytics.db` (metadata only, no images).
 Bundle: `backend/models/engagement.joblib`
 
 ---
-
-
-
-## Project docs
-
-
-| File              | Location                                   |
-| ----------------- | ------------------------------------------ |
-| Project overview  | `fyp/docs/PROJECT.md`                      |
-| Dissertation      | `fyp/docs/DISSERTATION_SOCIALENGAGE_AI.md` |
-| Kim dataset guide | `fyp/docs/KIM_HYBRID_DATASET.md`           |
-| Viva prep         | `fyp/docs/VIVA_DEFENCE.md`                 |
 
 
