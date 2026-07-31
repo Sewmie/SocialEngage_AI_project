@@ -72,6 +72,50 @@ export async function renderEditedImage(
   });
 }
 
+/** Export a PixelCrop region to a JPEG blob URL at the target aspect. */
+export async function renderPixelCrop(
+  image: HTMLImageElement,
+  crop: { x: number; y: number; width: number; height: number },
+  aspectW: number,
+  aspectH: number,
+  outputShortSide = 1080,
+): Promise<string> {
+  const scaleX = image.naturalWidth / image.width;
+  const scaleY = image.naturalHeight / image.height;
+
+  const srcX = crop.x * scaleX;
+  const srcY = crop.y * scaleY;
+  const srcW = crop.width * scaleX;
+  const srcH = crop.height * scaleY;
+
+  const ratio = aspectW / aspectH;
+  let outW: number;
+  let outH: number;
+  if (ratio >= 1) {
+    outW = outputShortSide * ratio;
+    outH = outputShortSide;
+  } else {
+    outW = outputShortSide;
+    outH = outputShortSide / ratio;
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(outW);
+  canvas.height = Math.round(outH);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas unavailable');
+
+  ctx.drawImage(image, srcX, srcY, srcW, srcH, 0, 0, canvas.width, canvas.height);
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(URL.createObjectURL(blob)) : reject(new Error('Export failed'))),
+      'image/jpeg',
+      0.92,
+    );
+  });
+}
+
 /** Trigger browser download */
 export function downloadBlobUrl(url: string, filename = 'socialengage-post.jpg') {
   const a = document.createElement('a');

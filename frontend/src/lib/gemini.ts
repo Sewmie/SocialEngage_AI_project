@@ -151,7 +151,7 @@ function parseContentJson(
   }
   const lines = cleaned
     .split(/\n/)
-    .map((l) => l.replace(/^\s*\d+[\).\s]+/, '').replace(/^[-*]\s+/, '').trim())
+    .map((l) => l.replace(/^\s*\d+[).\s]+/, '').replace(/^[-*]\s+/, '').trim())
     .filter(Boolean);
   return { ...empty, captions: lines.slice(0, 10) };
 }
